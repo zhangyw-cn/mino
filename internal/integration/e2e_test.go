@@ -52,6 +52,8 @@ func TestE2ELiveUpdate(t *testing.T) {
 	ts := httptest.NewServer(srv.Handler())
 	t.Cleanup(ts.Close)
 
+	assertTreeContains(t, ts.URL+"/api/tree", "a.html")
+
 	var search struct {
 		Results []string `json:"results"`
 	}
@@ -71,8 +73,36 @@ func TestE2ELiveUpdate(t *testing.T) {
 		t.Fatal("watcher did not add b.html to catalog")
 	}
 
+	assertTreeContains(t, ts.URL+"/api/tree", "a.html", "b.html")
+
 	assertBody(t, ts.URL+"/apps/a.html", "v1")
 	assertBody(t, ts.URL+"/apps/b.html", "b")
+}
+
+func assertTreeContains(t *testing.T, url string, wantFiles ...string) {
+	t.Helper()
+	var tree struct {
+		Name     string `json:"name"`
+		Path     string `json:"path"`
+		Type     string `json:"type"`
+		Children []struct {
+			Name string `json:"name"`
+			Type string `json:"type"`
+		} `json:"children"`
+	}
+	getJSON(t, url, &tree)
+	if tree.Name != "." || tree.Path != "" || tree.Type != "dir" {
+		t.Fatalf("tree root = %+v, want dir at .", tree)
+	}
+	names := make([]string, len(tree.Children))
+	for i, child := range tree.Children {
+		names[i] = child.Name
+	}
+	for _, want := range wantFiles {
+		if !slices.Contains(names, want) {
+			t.Fatalf("tree children = %v, want %q", names, want)
+		}
+	}
 }
 
 func getJSON(t *testing.T, url string, target any) {
