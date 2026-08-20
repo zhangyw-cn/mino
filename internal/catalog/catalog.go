@@ -81,7 +81,7 @@ func (c *Catalog) Scan() error {
 		}
 		if entry.IsDir() {
 			dirs[rel] = struct{}{}
-		} else if IsHTML(entry.Name()) {
+		} else if entry.Type().IsRegular() && IsHTML(entry.Name()) {
 			files[rel] = struct{}{}
 		}
 		return nil
@@ -202,14 +202,14 @@ func (c *Catalog) ApplyFSChange(absPath string, removed bool) []Event {
 		return c.removeLocked(rel)
 	}
 
-	info, err := os.Stat(absPath)
+	info, err := os.Lstat(absPath)
 	if err != nil {
 		return nil
 	}
 	if info.IsDir() {
 		return c.addDirsLocked(rel)
 	}
-	if !IsHTML(info.Name()) {
+	if !info.Mode().IsRegular() || !IsHTML(info.Name()) {
 		return nil
 	}
 

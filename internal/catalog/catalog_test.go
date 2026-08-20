@@ -119,3 +119,43 @@ func TestApplyFSChange(t *testing.T) {
 	}
 	_ = evs
 }
+
+func TestSymlinkHTMLIsNeverCataloged(t *testing.T) {
+	makeLeak := func(t *testing.T, root string) string {
+		t.Helper()
+		outside := filepath.Join(t.TempDir(), "outside.html")
+		if err := os.WriteFile(outside, []byte("secret"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		leak := filepath.Join(root, "leak.html")
+		if err := os.Symlink(outside, leak); err != nil {
+			t.Fatal(err)
+		}
+		return leak
+	}
+
+	t.Run("scan", func(t *testing.T) {
+		root, c := setupWorkspace(t)
+		makeLeak(t, root)
+
+		if err := c.Scan(); err != nil {
+			t.Fatal(err)
+		}
+		if c.Has("leak.html") {
+			t.Fatal("scan cataloged HTML symlink")
+		}
+	})
+
+	t.Run("filesystem change", func(t *testing.T) {
+		root, c := setupWorkspace(t)
+		leak := makeLeak(t, root)
+
+		events := c.ApplyFSChange(leak, false)
+		if c.Has("leak.html") {
+			t.Fatal("filesystem change cataloged HTML symlink")
+		}
+		if len(events) != 0 {
+			t.Fatalf("unexpected events: %+v", events)
+		}
+	})
+}
