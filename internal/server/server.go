@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"mino/internal/catalog"
+	"mino/internal/ui"
 )
 
 type Server struct {
@@ -39,7 +40,9 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/events", s.hub)
 	mux.HandleFunc("GET /api/meta", s.metaHandler)
 	mux.HandleFunc("GET /apps/", s.appsHandler)
-	mux.HandleFunc("GET /", s.indexHandler)
+	mux.HandleFunc("GET /app.js", embeddedAssetHandler("app.js", "text/javascript; charset=utf-8"))
+	mux.HandleFunc("GET /style.css", embeddedAssetHandler("style.css", "text/css; charset=utf-8"))
+	mux.HandleFunc("GET /{$}", s.indexHandler)
 	return mux
 }
 
@@ -102,12 +105,25 @@ func (s *Server) appsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) indexHandler(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/" {
-		http.NotFound(w, r)
+	data, err := ui.FS.ReadFile("index.html")
+	if err != nil {
+		http.Error(w, "embedded UI unavailable", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	_, _ = w.Write([]byte(indexHTML))
+	_, _ = w.Write(data)
+}
+
+func embeddedAssetHandler(name, contentType string) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		data, err := ui.FS.ReadFile(name)
+		if err != nil {
+			http.Error(w, "embedded UI unavailable", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", contentType)
+		_, _ = w.Write(data)
+	}
 }
 
 type treeNode struct {

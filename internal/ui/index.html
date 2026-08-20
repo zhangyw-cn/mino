@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>mino</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">M</span>
+      <h1 id="title">mino</h1>
+    </div>
+    <label class="search-box">
+      <span class="search-icon" aria-hidden="true">⌕</span>
+      <span class="sr-only">Search applications</span>
+      <input id="search" type="search" placeholder="Search files…" autocomplete="off">
+    </label>
+  </header>
+
+  <div id="watch-banner" class="banner" hidden>
+    Live reload unavailable — refresh manually
+  </div>
+
+  <main class="workspace">
+    <aside class="sidebar" aria-label="Application files">
+      <div class="pane-heading">Files</div>
+      <nav id="tree" class="tree">
+        <p class="muted">Loading files…</p>
+      </nav>
+    </aside>
+
+    <section class="preview-pane">
+      <div class="preview-bar">
+        <span id="preview-path">Select a file to preview</span>
+      </div>
+      <div id="empty-state" class="empty-state">
+        <div class="empty-icon" aria-hidden="true">◇</div>
+        <strong>No preview selected</strong>
+        <span>Choose an HTML file from the sidebar.</span>
+      </div>
+      <iframe id="preview" title="Application preview" hidden></iframe>
+    </section>
+  </main>
+
+  <script src="/app.js" defer></script>
+</body>
+</html>

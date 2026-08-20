@@ -162,6 +162,11 @@ func TestMetaAndIndex(t *testing.T) {
 	assertMeta(false)
 	srv.SetWatchEnabled(true)
 	assertMeta(true)
+}
+
+func TestUIIndexServed(t *testing.T) {
+	_, ts, _ := newTestServer(t)
+	defer ts.Close()
 
 	res, err := http.Get(ts.URL + "/")
 	if err != nil {
@@ -169,7 +174,12 @@ func TestMetaAndIndex(t *testing.T) {
 	}
 	body, _ := io.ReadAll(res.Body)
 	res.Body.Close()
-	if string(body) != "<!doctype html><title>mino</title><p>ok</p>" {
-		t.Fatalf("unexpected index: %q", body)
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("status %d", res.StatusCode)
+	}
+	for _, marker := range []string{"<iframe", "/app.js"} {
+		if !strings.Contains(string(body), marker) {
+			t.Fatalf("index missing %q: %q", marker, body)
+		}
 	}
 }
