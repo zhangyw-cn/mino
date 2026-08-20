@@ -4,7 +4,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 
 	"github.com/fsnotify/fsnotify"
@@ -41,7 +40,7 @@ func Start(root string, cat *catalog.Catalog, onEvents func([]catalog.Event)) (*
 		root:     absRoot,
 		done:     make(chan struct{}),
 	}
-	if err := w.addTree(absRoot); err != nil {
+	if err := w.addTree(absRoot, false); err != nil {
 		_ = fsw.Close()
 		return nil, err
 	}
@@ -91,7 +90,7 @@ func (w *Watcher) handle(event fsnotify.Event) {
 	if event.Has(fsnotify.Create) {
 		info, err := os.Lstat(event.Name)
 		if err == nil && info.IsDir() && info.Mode()&os.ModeSymlink == 0 {
-			_ = w.addTree(event.Name)
+			_ = w.addTree(event.Name, true)
 		}
 	}
 
@@ -101,31 +100,44 @@ func (w *Watcher) handle(event fsnotify.Event) {
 	}
 }
 
-func (w *Watcher) addTree(root string) error {
+func (w *Watcher) addTree(root string, ingestFiles bool) error {
 	return filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
-		if !entry.IsDir() {
+
+		ignored, err := w.ignored(path)
+		if err != nil {
+			return err
+		}
+		if ignored {
+			if entry.IsDir() {
+				return fs.SkipDir
+			}
 			return nil
 		}
-		if path != w.root && w.isBuiltinIgnored(path) {
-			return fs.SkipDir
+
+		if entry.IsDir() {
+			return w.fs.Add(path)
 		}
-		return w.fs.Add(path)
+		if ingestFiles && entry.Type().IsRegular() {
+			events := w.cat.ApplyFSChange(path, false)
+			if len(events) > 0 && w.onEvents != nil {
+				w.onEvents(events)
+			}
+		}
+		return nil
 	})
 }
 
-func (w *Watcher) isBuiltinIgnored(path string) bool {
+func (w *Watcher) ignored(path string) (bool, error) {
 	rel, err := filepath.Rel(w.root, path)
 	if err != nil {
-		return false
+		return false, err
 	}
-	for _, part := range strings.Split(filepath.ToSlash(rel), "/") {
-		switch part {
-		case ".mino", ".git", ".hg", ".svn", "node_modules":
-			return true
-		}
+	rel, err = catalog.NormalizeRel(rel)
+	if err != nil {
+		return false, err
 	}
-	return false
+	return w.cat.Ignored(rel), nil
 }

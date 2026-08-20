@@ -86,6 +86,39 @@ func TestWatcherTracksChangesRecursively(t *testing.T) {
 	}
 }
 
+func TestWatcherIngestsHTMLFromMovedInDirectory(t *testing.T) {
+	root := t.TempDir()
+	cat := newCatalog(t, root)
+	events := make(chan catalog.Event, 8)
+
+	w, err := watcher.Start(root, cat, func(batch []catalog.Event) {
+		for _, event := range batch {
+			events <- event
+		}
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer w.Close()
+
+	staging := t.TempDir()
+	movedDir := filepath.Join(staging, "subdir")
+	if err := os.Mkdir(movedDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(movedDir, "a.html"), []byte("a"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(movedDir, filepath.Join(root, "subdir")); err != nil {
+		t.Fatal(err)
+	}
+
+	waitForEvent(t, events, catalog.Event{Kind: catalog.EventAdded, Path: "subdir/a.html"})
+	if !cat.Has("subdir/a.html") {
+		t.Fatal("catalog did not ingest HTML from moved-in directory")
+	}
+}
+
 func newCatalog(t *testing.T, root string) *catalog.Catalog {
 	t.Helper()
 	matcher, err := ignore.New(nil)

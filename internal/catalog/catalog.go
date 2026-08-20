@@ -185,6 +185,15 @@ func (c *Catalog) Has(rel string) bool {
 	return ok
 }
 
+// Ignored reports whether a root-relative path is excluded from the catalog.
+func (c *Catalog) Ignored(rel string) bool {
+	rel, err := NormalizeRel(rel)
+	if err != nil {
+		return true
+	}
+	return c.ignored(rel)
+}
+
 func (c *Catalog) ApplyFSChange(absPath string, removed bool) []Event {
 	rel, err := filepath.Rel(c.root, absPath)
 	if err != nil {
