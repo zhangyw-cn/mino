@@ -118,7 +118,16 @@ func (w *Watcher) addTree(root string, ingestFiles bool) error {
 		}
 
 		if entry.IsDir() {
-			return w.fs.Add(path)
+			if err := w.fs.Add(path); err != nil {
+				return err
+			}
+			if ingestFiles {
+				events := w.cat.ApplyFSChange(path, false)
+				if len(events) > 0 && w.onEvents != nil {
+					w.onEvents(events)
+				}
+			}
+			return nil
 		}
 		if ingestFiles && entry.Type().IsRegular() {
 			events := w.cat.ApplyFSChange(path, false)

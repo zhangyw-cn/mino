@@ -27,3 +27,5 @@
 - Added direct coverage proving `tmp/**` directories are absent from the underlying watch list.
 - `PATH=/home/zhangyw/go1.24.4/bin:$PATH go test ./internal/watcher/ -v`: PASS.
 - `PATH=/home/zhangyw/go1.24.4/bin:$PATH go test ./internal/catalog/ -v`: PASS.
+- Newly watched directory trees now ingest each real directory as well as regular files, so nested empty directories appear in `Catalog.Tree()` and emit catalog events.
+- Added a moved-in tree regression covering a nested empty directory while keeping the initial `Start` walk watch-only.

@@ -119,6 +119,36 @@ func TestWatcherIngestsHTMLFromMovedInDirectory(t *testing.T) {
 	}
 }
 
+func TestWatcherIngestsEmptyDirectoriesFromMovedInTree(t *testing.T) {
+	root := t.TempDir()
+	cat := newCatalog(t, root)
+	events := make(chan catalog.Event, 8)
+
+	w, err := watcher.Start(root, cat, func(batch []catalog.Event) {
+		for _, event := range batch {
+			events <- event
+		}
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer w.Close()
+
+	staging := t.TempDir()
+	movedDir := filepath.Join(staging, "tree")
+	if err := os.MkdirAll(filepath.Join(movedDir, "nested", "empty"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(movedDir, filepath.Join(root, "tree")); err != nil {
+		t.Fatal(err)
+	}
+
+	waitForEvent(t, events, catalog.Event{Kind: catalog.EventAdded, Path: "tree/nested/empty"})
+	if !treeHasPath(cat.Tree(), "tree/nested/empty") {
+		t.Fatal("catalog tree did not include moved-in empty directory")
+	}
+}
+
 func newCatalog(t *testing.T, root string) *catalog.Catalog {
 	t.Helper()
 	matcher, err := ignore.New(nil)
@@ -130,6 +160,18 @@ func newCatalog(t *testing.T, root string) *catalog.Catalog {
 		t.Fatal(err)
 	}
 	return cat
+}
+
+func treeHasPath(node *catalog.Node, want string) bool {
+	if node.Path == want {
+		return true
+	}
+	for _, child := range node.Children {
+		if treeHasPath(child, want) {
+			return true
+		}
+	}
+	return false
 }
 
 func waitForEvent(t *testing.T, events <-chan catalog.Event, want catalog.Event) {
