@@ -1,0 +1,123 @@
+package server
+
+import (
+	"encoding/json"
+	"net/http"
+	"strings"
+	"sync"
+
+	"mino/internal/catalog"
+)
+
+type Server struct {
+	root    string
+	cfgName string
+	cat     *catalog.Catalog
+	hub     *Hub
+
+	mu           sync.RWMutex
+	watchEnabled bool
+}
+
+func New(root string, cfgName string, cat *catalog.Catalog, hub *Hub) *Server {
+	if hub == nil {
+		hub = NewHub()
+	}
+	return &Server{
+		root:    root,
+		cfgName: cfgName,
+		cat:     cat,
+		hub:     hub,
+	}
+}
+
+func (s *Server) Handler() http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /api/tree", s.treeHandler)
+	mux.HandleFunc("GET /api/search", s.searchHandler)
+	mux.Handle("GET /api/events", s.hub)
+	mux.HandleFunc("GET /api/meta", s.metaHandler)
+	mux.HandleFunc("GET /apps/", s.appsHandler)
+	mux.HandleFunc("GET /", s.indexHandler)
+	return mux
+}
+
+func (s *Server) SetWatchEnabled(enabled bool) {
+	s.mu.Lock()
+	s.watchEnabled = enabled
+	s.mu.Unlock()
+}
+
+func (s *Server) treeHandler(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, treeResponse(s.cat.Tree()))
+}
+
+func (s *Server) searchHandler(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, struct {
+		Results []string `json:"results"`
+	}{Results: s.cat.Search(r.URL.Query().Get("q"))})
+}
+
+func (s *Server) metaHandler(w http.ResponseWriter, _ *http.Request) {
+	s.mu.RLock()
+	enabled := s.watchEnabled
+	s.mu.RUnlock()
+	writeJSON(w, struct {
+		Name         string `json:"name"`
+		WatchEnabled bool   `json:"watchEnabled"`
+	}{
+		Name:         s.cfgName,
+		WatchEnabled: enabled,
+	})
+}
+
+func (s *Server) appsHandler(w http.ResponseWriter, r *http.Request) {
+	raw := strings.TrimPrefix(r.URL.Path, "/apps/")
+	rel, err := catalog.NormalizeRel(raw)
+	if err != nil || rel == "" || !catalog.IsHTML(rel) || !s.cat.Has(rel) {
+		http.NotFound(w, r)
+		return
+	}
+	target, err := catalog.ResolveUnderRoot(s.root, rel)
+	if err != nil {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+	http.ServeFile(w, r, target)
+}
+
+func (s *Server) indexHandler(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/" {
+		http.NotFound(w, r)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_, _ = w.Write([]byte(indexHTML))
+}
+
+type treeNode struct {
+	Name     string      `json:"name"`
+	Path     string      `json:"path"`
+	Type     string      `json:"type"`
+	Children []*treeNode `json:"children"`
+}
+
+func treeResponse(node *catalog.Node) *treeNode {
+	if node == nil {
+		return nil
+	}
+	result := &treeNode{
+		Name: node.Name,
+		Path: node.Path,
+		Type: node.Type,
+	}
+	for _, child := range node.Children {
+		result.Children = append(result.Children, treeResponse(child))
+	}
+	return result
+}
+
+func writeJSON(w http.ResponseWriter, value any) {
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(value)
+}
