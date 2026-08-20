@@ -12,9 +12,23 @@
   const expandedPaths = new Set([""]);
   let currentPath = "";
   let debounceTimer;
+  let listingAbort = null;
+  let listingRequestId = 0;
 
   function previewURL(path) {
-    return `/apps/${encodeURI(path)}?t=${Date.now()}`;
+    const encoded = path.split("/").map(encodeURIComponent).join("/");
+    return `/apps/${encoded}?t=${Date.now()}`;
+  }
+
+  function beginListingRequest() {
+    if (listingAbort) listingAbort.abort();
+    listingAbort = new AbortController();
+    listingRequestId += 1;
+    return { signal: listingAbort.signal, requestId: listingRequestId };
+  }
+
+  function isStaleListingRequest(requestId) {
+    return requestId !== listingRequestId;
   }
 
   function openFile(path) {
@@ -104,10 +118,13 @@
   }
 
   async function loadTree() {
+    const { signal, requestId } = beginListingRequest();
     try {
-      const response = await fetch("/api/tree");
+      const response = await fetch("/api/tree", { signal });
+      if (isStaleListingRequest(requestId)) return;
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const root = await response.json();
+      if (isStaleListingRequest(requestId)) return;
       const list = document.createElement("ul");
       list.className = "tree-list";
       for (const node of root?.children || []) {
@@ -116,16 +133,23 @@
       tree.replaceChildren(list);
       if (!list.children.length) showMessage("No HTML files found.");
     } catch (error) {
+      if (error.name === "AbortError") return;
       console.error("Failed to load tree", error);
       showMessage("Could not load files.");
     }
   }
 
   async function loadSearch(query) {
+    const { signal, requestId } = beginListingRequest();
     try {
-      const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+      const response = await fetch(
+        `/api/search?q=${encodeURIComponent(query)}`,
+        { signal },
+      );
+      if (isStaleListingRequest(requestId)) return;
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const payload = await response.json();
+      if (isStaleListingRequest(requestId)) return;
       const list = document.createElement("ul");
       list.className = "tree-list search-results";
       for (const path of payload.results || []) {
@@ -139,6 +163,7 @@
       tree.replaceChildren(list);
       if (!list.children.length) showMessage("No matching files.");
     } catch (error) {
+      if (error.name === "AbortError") return;
       console.error("Search failed", error);
       showMessage("Search unavailable.");
     }

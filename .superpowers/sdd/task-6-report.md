@@ -29,3 +29,19 @@ IDE diagnostics reported no lint errors in the changed files.
 ## Concerns
 
 No known blockers. Browser interactions are implemented in dependency-free JavaScript; the requested Go integration test covers asset embedding, while live browser behavior remains best validated with a manual smoke test.
+
+## Review fixes
+
+- **Path encoding**: `previewURL` now encodes each path segment with `encodeURIComponent` (joined by `/`) so `#` and `?` in filenames work in `/apps/` URLs.
+- **Stale search race**: tree/search listing fetches share an `AbortController` and monotonic request id; stale responses are ignored, and clearing the search box aborts in-flight search before reloading the tree.
+
+### Verification
+
+```text
+PATH=/home/zhangyw/go1.24.4/bin:$PATH go test ./internal/server/ -v
+ok  	mino/internal/server
+```
+
+### Commit
+
+`fix: encode app paths per segment and cancel stale listing fetches`
