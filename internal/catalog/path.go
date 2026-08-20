@@ -1,0 +1,54 @@
+package catalog
+
+import (
+	"fmt"
+	"path"
+	"path/filepath"
+	"strings"
+)
+
+func IsHTML(name string) bool {
+	ext := strings.ToLower(filepath.Ext(name))
+	return ext == ".html" || ext == ".htm"
+}
+
+func NormalizeRel(p string) (string, error) {
+	p = strings.ReplaceAll(p, "\\", "/")
+	if strings.HasPrefix(p, "/") {
+		return "", fmt.Errorf("path must be relative: %q", p)
+	}
+
+	p = path.Clean(p)
+	if p == ".." || strings.HasPrefix(p, "../") {
+		return "", fmt.Errorf("path escapes root: %q", p)
+	}
+	if p == "." {
+		return "", nil
+	}
+	return p, nil
+}
+
+func ResolveUnderRoot(root, rel string) (string, error) {
+	rel, err := NormalizeRel(rel)
+	if err != nil {
+		return "", err
+	}
+
+	absRoot, err := filepath.Abs(root)
+	if err != nil {
+		return "", err
+	}
+	abs, err := filepath.Abs(filepath.Join(absRoot, filepath.FromSlash(rel)))
+	if err != nil {
+		return "", err
+	}
+
+	within, err := filepath.Rel(absRoot, abs)
+	if err != nil {
+		return "", err
+	}
+	if within == ".." || strings.HasPrefix(within, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("path escapes root")
+	}
+	return abs, nil
+}

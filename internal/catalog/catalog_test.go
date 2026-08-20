@@ -1,0 +1,121 @@
+package catalog_test
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+
+	"mino/internal/catalog"
+	"mino/internal/ignore"
+)
+
+func setupWorkspace(t *testing.T) (root string, c *catalog.Catalog) {
+	t.Helper()
+	root = t.TempDir()
+	mustWrite := func(rel, body string) {
+		p := filepath.Join(root, rel)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	mustWrite("notes/a.html", "<html>a</html>")
+	mustWrite("tools/timer.html", "<html>t</html>")
+	if err := os.MkdirAll(filepath.Join(root, "empty"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	mustWrite(".git/nope.html", "x")
+	m, err := ignore.New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c = catalog.New(root, m)
+	if err := c.Scan(); err != nil {
+		t.Fatal(err)
+	}
+	return root, c
+}
+
+func TestScanAndSearch(t *testing.T) {
+	_, c := setupWorkspace(t)
+	if !c.Has("notes/a.html") || c.Has(".git/nope.html") {
+		t.Fatal("has mismatch")
+	}
+	got := c.Search("timer")
+	if len(got) != 1 || got[0] != "tools/timer.html" {
+		t.Fatalf("search: %v", got)
+	}
+	all := c.Search("")
+	if len(all) != 2 {
+		t.Fatalf("all: %v", all)
+	}
+}
+
+func TestTreeIncludesEmptyDir(t *testing.T) {
+	_, c := setupWorkspace(t)
+	tree := c.Tree()
+	var foundEmpty bool
+	var walk func(n *catalog.Node)
+	walk = func(n *catalog.Node) {
+		if n.Path == "empty" && n.Type == "dir" {
+			foundEmpty = true
+		}
+		for _, ch := range n.Children {
+			walk(ch)
+		}
+	}
+	walk(tree)
+	if !foundEmpty {
+		t.Fatal("empty dir missing from tree")
+	}
+}
+
+func TestTreePlacesRootFileDirectlyUnderRoot(t *testing.T) {
+	root, c := setupWorkspace(t)
+	p := filepath.Join(root, "root.html")
+	if err := os.WriteFile(p, []byte("root"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c.ApplyFSChange(p, false)
+
+	tree := c.Tree()
+	for _, child := range tree.Children {
+		if child.Path == "." {
+			t.Fatal("unexpected synthetic dot directory")
+		}
+	}
+}
+
+func TestApplyFSChange(t *testing.T) {
+	root, c := setupWorkspace(t)
+	p := filepath.Join(root, "notes", "b.html")
+	if err := os.WriteFile(p, []byte("b"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	evs := c.ApplyFSChange(p, false)
+	if !c.Has("notes/b.html") {
+		t.Fatal("expected add")
+	}
+	found := false
+	for _, e := range evs {
+		if e.Kind == catalog.EventAdded && e.Path == "notes/b.html" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("events: %+v", evs)
+	}
+	if err := os.Remove(p); err != nil {
+		t.Fatal(err)
+	}
+	evs = c.ApplyFSChange(p, true)
+	if c.Has("notes/b.html") {
+		t.Fatal("expected remove")
+	}
+	_ = evs
+}
