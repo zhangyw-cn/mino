@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sticky Note · Mino Example</title>
+  <style>
+    body {
+      margin: 0; min-height: 100vh; display: grid; place-items: center;
+      background: #ecfccb; font-family: "Segoe UI", "PingFang SC", sans-serif; color: #365314;
+    }
+    .note {
+      width: min(24rem, 90vw); min-height: 14rem; background: #fef9c3;
+      box-shadow: 4px 8px 0 #a3e635; padding: 1.25rem; transform: rotate(-1.2deg);
+    }
+    h1 { margin: 0 0 .75rem; font-size: 1rem; }
+    textarea {
+      width: 100%; min-height: 9rem; border: 0; resize: vertical; background: transparent;
+      font: inherit; line-height: 1.5; outline: none;
+    }
+    p { margin: .5rem 0 0; font-size: .85rem; opacity: .75; }
+  </style>
+</head>
+<body>
+  <div class="note">
+    <h1>便签</h1>
+    <textarea id="t" placeholder="随便写点什么…"></textarea>
+    <p>自动保存到 localStorage</p>
+  </div>
+  <script>
+    const KEY = "mino-example-sticky";
+    const t = document.getElementById("t");
+    t.value = localStorage.getItem(KEY) || "";
+    t.addEventListener("input", () => localStorage.setItem(KEY, t.value));
+  </script>
+</body>
+</html>

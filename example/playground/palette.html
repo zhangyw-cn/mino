@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Palette · Mino Example</title>
+  <style>
+    body {
+      margin: 0; min-height: 100vh; display: grid; place-items: center;
+      font-family: Georgia, "Times New Roman", serif; background: #0b1020; color: #e2e8f0;
+    }
+    main { width: min(28rem, 92vw); }
+    h1 { font-weight: 400; font-size: 1.35rem; margin: 0 0 1rem; }
+    .swatches { display: grid; grid-template-columns: repeat(5, 1fr); gap: .5rem; }
+    .swatch {
+      aspect-ratio: 1; border-radius: .5rem; border: 1px solid rgb(255 255 255 / 15%);
+      cursor: pointer;
+    }
+    code {
+      display: block; margin-top: 1rem; padding: .75rem 1rem; border-radius: .5rem;
+      background: #111827; font-family: ui-monospace, Consolas, monospace; font-size: .95rem;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Click a swatch</h1>
+    <div class="swatches" id="swatches"></div>
+    <code id="hex">#64748b</code>
+  </main>
+  <script>
+    const colors = ["#ef4444", "#f97316", "#eab308", "#22c55e", "#14b8a6", "#3b82f6", "#8b5cf6", "#ec4899", "#64748b", "#f8fafc"];
+    const root = document.getElementById("swatches");
+    const hex = document.getElementById("hex");
+    for (const c of colors) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "swatch";
+      b.style.background = c;
+      b.title = c;
+      b.onclick = () => { hex.textContent = c; document.body.style.background = c === "#f8fafc" ? "#0b1020" : c; };
+      root.appendChild(b);
+    }
+  </script>
+</body>
+</html>

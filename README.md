@@ -20,6 +20,15 @@ The directory defaults to the current working directory. `--port` overrides the 
 
 Mino does not open a browser for you: copy the printed URL (for example `http://127.0.0.1:52341/`) and open it manually.
 
+### Try the bundled examples
+
+```sh
+go run ./cmd/mino ./example
+# or, if already installed: mino ./example
+```
+
+The `example/` tree has a few self-contained HTML apps (`hello.html`, `tools/`, `notes/`, `playground/`) for browsing, search, and iframe preview. First run creates `example/.mino/` locally; that directory is gitignored.
+
 On first use, Mino creates `<dir>/.mino/config.toml`:
 
 ```toml
