@@ -210,7 +210,7 @@ func (c *Catalog) ApplyFSChange(absPath string, removed bool) []Event {
 		return c.addDirsLocked(rel)
 	}
 	if !info.Mode().IsRegular() || !IsHTML(info.Name()) {
-		return nil
+		return c.removeLocked(rel)
 	}
 
 	events := c.addDirsLocked(path.Dir(rel))

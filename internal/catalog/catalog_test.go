@@ -159,3 +159,33 @@ func TestSymlinkHTMLIsNeverCataloged(t *testing.T) {
 		}
 	})
 }
+
+func TestApplyFSChangeRemovesCatalogedFileReplacedBySymlink(t *testing.T) {
+	root, c := setupWorkspace(t)
+	file := filepath.Join(root, "x.html")
+	if err := os.WriteFile(file, []byte("cataloged"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.Scan(); err != nil {
+		t.Fatal(err)
+	}
+
+	outside := filepath.Join(t.TempDir(), "outside.html")
+	if err := os.WriteFile(outside, []byte("external"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(file); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, file); err != nil {
+		t.Fatal(err)
+	}
+
+	events := c.ApplyFSChange(file, false)
+	if c.Has("x.html") {
+		t.Fatal("catalog retained regular file replaced by symlink")
+	}
+	if len(events) != 1 || events[0].Kind != catalog.EventRemoved || events[0].Path != "x.html" {
+		t.Fatalf("events: %+v", events)
+	}
+}
