@@ -41,7 +41,7 @@ func New(extra []string) (*Matcher, error) {
 }
 
 func (m *Matcher) Match(rel string) bool {
-	rel = path.Clean("/" + strings.ReplaceAll(rel, "\\", "/"))
+	rel = path.Clean("/" + rel)
 	rel = strings.TrimPrefix(rel, "/")
 	if rel == "." || rel == "" {
 		return false

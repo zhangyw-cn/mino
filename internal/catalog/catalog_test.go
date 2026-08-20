@@ -56,6 +56,42 @@ func TestScanAndSearch(t *testing.T) {
 	}
 }
 
+func TestScanSkipsUnreadableSubdirectory(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("running as root: permission bits are not enforced")
+	}
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "ok.html"), []byte("ok"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	locked := filepath.Join(root, "locked")
+	if err := os.Mkdir(locked, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(locked, "hidden.html"), []byte("hidden"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(locked, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(locked, 0o755) })
+
+	m, err := ignore.New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := catalog.New(root, m)
+	if err := c.Scan(); err != nil {
+		t.Fatalf("scan failed on unreadable subdirectory: %v", err)
+	}
+	if !c.Has("ok.html") {
+		t.Fatal("expected ok.html in catalog")
+	}
+	if c.Has("locked/hidden.html") {
+		t.Fatal("unreadable directory contents should not be cataloged")
+	}
+}
+
 func TestTreeIncludesEmptyDir(t *testing.T) {
 	_, c := setupWorkspace(t)
 	tree := c.Tree()

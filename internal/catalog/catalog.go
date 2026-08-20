@@ -58,33 +58,7 @@ func (c *Catalog) Scan() error {
 	dirs := make(map[string]struct{})
 
 	err := filepath.WalkDir(c.root, func(filePath string, entry fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-
-		rel, err := filepath.Rel(c.root, filePath)
-		if err != nil {
-			return err
-		}
-		rel, err = NormalizeRel(rel)
-		if err != nil {
-			return err
-		}
-		if rel == "" {
-			return nil
-		}
-		if c.ignored(rel) {
-			if entry.IsDir() {
-				return fs.SkipDir
-			}
-			return nil
-		}
-		if entry.IsDir() {
-			dirs[rel] = struct{}{}
-		} else if entry.Type().IsRegular() && IsHTML(entry.Name()) {
-			files[rel] = struct{}{}
-		}
-		return nil
+		return c.scanEntry(files, dirs, filePath, entry, walkErr)
 	})
 	if err != nil {
 		return err
@@ -94,6 +68,44 @@ func (c *Catalog) Scan() error {
 	c.files = files
 	c.dirs = dirs
 	c.mu.Unlock()
+	return nil
+}
+
+func (c *Catalog) scanEntry(files, dirs map[string]struct{}, filePath string, entry fs.DirEntry, walkErr error) error {
+	if walkErr != nil {
+		// An unreadable root is fatal; anything below it is skipped so a single
+		// restricted entry cannot make the whole scan fail.
+		if filePath == c.root {
+			return walkErr
+		}
+		if entry != nil && entry.IsDir() {
+			return fs.SkipDir
+		}
+		return nil
+	}
+
+	rel, err := filepath.Rel(c.root, filePath)
+	if err != nil {
+		return err
+	}
+	rel, err = NormalizeRel(rel)
+	if err != nil {
+		return err
+	}
+	if rel == "" {
+		return nil
+	}
+	if c.ignored(rel) {
+		if entry.IsDir() {
+			return fs.SkipDir
+		}
+		return nil
+	}
+	if entry.IsDir() {
+		dirs[rel] = struct{}{}
+	} else if entry.Type().IsRegular() && IsHTML(entry.Name()) {
+		files[rel] = struct{}{}
+	}
 	return nil
 }
 

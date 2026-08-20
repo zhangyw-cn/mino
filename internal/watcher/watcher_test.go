@@ -149,6 +149,41 @@ func TestWatcherIngestsEmptyDirectoriesFromMovedInTree(t *testing.T) {
 	}
 }
 
+func TestWatcherSkipsUnreadableSubdirectory(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("running as root: permission bits are not enforced")
+	}
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "ok.html"), []byte("ok"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	locked := filepath.Join(root, "locked")
+	if err := os.Mkdir(locked, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(locked, "hidden.html"), []byte("hidden"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(locked, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(locked, 0o755) })
+
+	cat := newCatalog(t, root)
+	w, err := watcher.Start(root, cat, nil)
+	if err != nil {
+		t.Fatalf("start watcher with unreadable subdirectory: %v", err)
+	}
+	defer w.Close()
+
+	if !cat.Has("ok.html") {
+		t.Fatal("expected ok.html in catalog")
+	}
+	if cat.Has("locked/hidden.html") {
+		t.Fatal("unreadable directory contents should not be cataloged")
+	}
+}
+
 func newCatalog(t *testing.T, root string) *catalog.Catalog {
 	t.Helper()
 	matcher, err := ignore.New(nil)

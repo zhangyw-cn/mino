@@ -1,7 +1,9 @@
 package catalog_test
 
 import (
+	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"mino/internal/catalog"
@@ -18,8 +20,30 @@ func TestNormalizeRelRejectsTraversal(t *testing.T) {
 		t.Fatal("expected error")
 	}
 	got, err := catalog.NormalizeRel(`notes\a.html`)
-	if err != nil || got != "notes/a.html" {
-		t.Fatalf("got %q err %v", got, err)
+	want := `notes\a.html`
+	if runtime.GOOS == "windows" {
+		want = "notes/a.html"
+	}
+	if err != nil || got != want {
+		t.Fatalf("got %q err %v, want %q", got, err, want)
+	}
+}
+
+func TestBackslashFilenameSurvivesNormalizeOnUnix(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("backslash is a path separator on Windows")
+	}
+	root := t.TempDir()
+	name := `we\ird.html`
+	if err := os.WriteFile(filepath.Join(root, name), []byte("x"), 0o644); err != nil {
+		t.Skipf("filesystem rejects backslash in filenames: %v", err)
+	}
+	abs, err := catalog.ResolveUnderRoot(root, name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(abs); err != nil {
+		t.Fatalf("resolved path %q does not exist: %v", abs, err)
 	}
 }
 

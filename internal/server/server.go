@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -11,6 +12,9 @@ import (
 	"mino/internal/ui"
 )
 
+// loopbackHosts are always accepted regardless of the configured listen host.
+var loopbackHosts = []string{"127.0.0.1", "localhost", "[::1]", "::1"}
+
 type Server struct {
 	root    string
 	cfgName string
@@ -19,18 +23,59 @@ type Server struct {
 
 	mu           sync.RWMutex
 	watchEnabled bool
+	allowedHosts map[string]struct{}
 }
 
-func New(root string, cfgName string, cat *catalog.Catalog, hub *Hub) *Server {
+func New(root string, cfgName string, host string, cat *catalog.Catalog, hub *Hub) *Server {
 	if hub == nil {
 		hub = NewHub()
 	}
-	return &Server{
+	s := &Server{
 		root:    root,
 		cfgName: cfgName,
 		cat:     cat,
 		hub:     hub,
 	}
+	s.SetConfiguredHost(host)
+	return s
+}
+
+// SetConfiguredHost allows requests addressed to the configured listen host in
+// addition to the loopback names, blocking DNS rebinding from other names.
+func (s *Server) SetConfiguredHost(host string) {
+	allowed := make(map[string]struct{}, len(loopbackHosts)+1)
+	for _, name := range loopbackHosts {
+		allowed[name] = struct{}{}
+	}
+	if host = strings.ToLower(strings.TrimSpace(host)); host != "" {
+		allowed[host] = struct{}{}
+		allowed[strings.Trim(host, "[]")] = struct{}{}
+	}
+	s.mu.Lock()
+	s.allowedHosts = allowed
+	s.mu.Unlock()
+}
+
+func (s *Server) hostAllowed(requestHost string) bool {
+	hostname := requestHost
+	if host, _, err := net.SplitHostPort(requestHost); err == nil {
+		hostname = host
+	}
+	hostname = strings.ToLower(strings.Trim(hostname, "[]"))
+	s.mu.RLock()
+	_, ok := s.allowedHosts[hostname]
+	s.mu.RUnlock()
+	return ok
+}
+
+func (s *Server) checkHost(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !s.hostAllowed(r.Host) {
+			http.Error(w, "forbidden host", http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func (s *Server) Handler() http.Handler {
@@ -43,7 +88,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /app.js", embeddedAssetHandler("app.js", "text/javascript; charset=utf-8"))
 	mux.HandleFunc("GET /style.css", embeddedAssetHandler("style.css", "text/css; charset=utf-8"))
 	mux.HandleFunc("GET /{$}", s.indexHandler)
-	return mux
+	return s.checkHost(mux)
 }
 
 func (s *Server) SetWatchEnabled(enabled bool) {

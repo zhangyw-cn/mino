@@ -18,6 +18,8 @@ mino [dir] [--port N]
 
 The directory defaults to the current working directory. `--port` overrides the configured port for the current run; use `0` to select an available port automatically. Mino prints the local URL and runs until interrupted with Ctrl+C.
 
+Mino does not open a browser for you: copy the printed URL (for example `http://127.0.0.1:52341/`) and open it manually.
+
 On first use, Mino creates `<dir>/.mino/config.toml`:
 
 ```toml
@@ -32,8 +34,14 @@ ignore = ["archive/**"]
 - `host`: listening address
 - `ignore`: additional root-relative glob patterns to exclude
 
-## Limitations and security
+## Security
 
-Mino is intended for local use and binds to `127.0.0.1` by default. Do not change `host` to a public or LAN address unless you understand the exposure: Mino has no authentication.
+**Only preview HTML you trust.** Previewed files are served from the same origin as the Mino UI and run inside an iframe without a `sandbox` attribute, so they keep access to `localStorage`, cookies, and the same origin's endpoints. That means a previewed page can call `/api/*` and read any file exposed under `/apps/*`, and it can read or overwrite browser storage belonging to other apps in the same workspace. This is deliberate: sandboxing would break the self-contained apps Mino exists to run, which commonly persist state in `localStorage`.
+
+Mino has no authentication and is intended for local use, binding to `127.0.0.1` by default. Do not change `host` to a public or LAN address unless you understand the exposure.
+
+As a mitigation against DNS rebinding, requests are rejected with `403` unless the `Host` header names the configured `host`, `localhost`, or a loopback address. When you bind to a non-loopback `host`, reach the server through exactly that host value.
+
+## Limitations
 
 Only self-contained, single-file HTML apps are supported. Companion CSS, JavaScript, images, and other neighboring files are not served.

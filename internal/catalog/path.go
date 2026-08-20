@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -13,7 +14,15 @@ func IsHTML(name string) bool {
 }
 
 func NormalizeRel(p string) (string, error) {
-	p = strings.ReplaceAll(p, "\\", "/")
+	return normalizeRel(p, runtime.GOOS == "windows")
+}
+
+// normalizeRel converts p to a slash-separated relative path. Backslashes are
+// only separators on Windows; elsewhere they are legal filename characters.
+func normalizeRel(p string, backslashIsSeparator bool) (string, error) {
+	if backslashIsSeparator {
+		p = strings.ReplaceAll(p, `\`, "/")
+	}
 	if strings.HasPrefix(p, "/") {
 		return "", fmt.Errorf("path must be relative: %q", p)
 	}

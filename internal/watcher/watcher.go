@@ -103,12 +103,23 @@ func (w *Watcher) handle(event fsnotify.Event) {
 func (w *Watcher) addTree(root string, ingestFiles bool) error {
 	return filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
-			return walkErr
+			// Only an unreadable root is fatal; restricted entries below it are
+			// skipped so watching still covers the rest of the tree.
+			if path == root {
+				return walkErr
+			}
+			if entry != nil && entry.IsDir() {
+				return fs.SkipDir
+			}
+			return nil
 		}
 
 		ignored, err := w.ignored(path)
 		if err != nil {
-			return err
+			if entry.IsDir() {
+				return fs.SkipDir
+			}
+			return nil
 		}
 		if ignored {
 			if entry.IsDir() {
@@ -119,7 +130,10 @@ func (w *Watcher) addTree(root string, ingestFiles bool) error {
 
 		if entry.IsDir() {
 			if err := w.fs.Add(path); err != nil {
-				return err
+				if path == root {
+					return err
+				}
+				return fs.SkipDir
 			}
 			if ingestFiles {
 				events := w.cat.ApplyFSChange(path, false)

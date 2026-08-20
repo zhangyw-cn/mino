@@ -1,6 +1,8 @@
 package integration_test
 
 import (
+	"bufio"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -8,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -17,8 +20,12 @@ import (
 	"mino/internal/watcher"
 )
 
-func TestE2ELiveUpdate(t *testing.T) {
-	root := t.TempDir()
+// startStack wires a catalog, watcher, hub, and HTTP server over a temp root
+// holding a single a.html file, mirroring how mino runs.
+func startStack(t *testing.T) (root string, cat *catalog.Catalog, ts *httptest.Server) {
+	t.Helper()
+
+	root = t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "a.html"), []byte("v1"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -27,13 +34,13 @@ func TestE2ELiveUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cat := catalog.New(root, matcher)
+	cat = catalog.New(root, matcher)
 	if err := cat.Scan(); err != nil {
 		t.Fatal(err)
 	}
 
 	hub := server.NewHub()
-	srv := server.New(root, "e2e", cat, hub)
+	srv := server.New(root, "e2e", "", cat, hub)
 	w, err := watcher.Start(root, cat, func(events []catalog.Event) {
 		for _, event := range events {
 			hub.Publish(event)
@@ -49,8 +56,13 @@ func TestE2ELiveUpdate(t *testing.T) {
 	})
 	srv.SetWatchEnabled(true)
 
-	ts := httptest.NewServer(srv.Handler())
+	ts = httptest.NewServer(srv.Handler())
 	t.Cleanup(ts.Close)
+	return root, cat, ts
+}
+
+func TestE2ELiveUpdate(t *testing.T) {
+	root, cat, ts := startStack(t)
 
 	assertTreeContains(t, ts.URL+"/api/tree", "a.html")
 
@@ -77,6 +89,84 @@ func TestE2ELiveUpdate(t *testing.T) {
 
 	assertBody(t, ts.URL+"/apps/a.html", "v1")
 	assertBody(t, ts.URL+"/apps/b.html", "b")
+}
+
+func TestE2ESSEAnnouncesNewFile(t *testing.T) {
+	root, _, ts := startStack(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, ts.URL+"/api/events", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Accept", "text/event-stream")
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("GET /api/events: status = %d, want %d", res.StatusCode, http.StatusOK)
+	}
+	if contentType := res.Header.Get("Content-Type"); !strings.HasPrefix(contentType, "text/event-stream") {
+		t.Fatalf("content type = %q, want text/event-stream", contentType)
+	}
+
+	lines := make(chan string)
+	readErrs := make(chan error, 1)
+	go func() {
+		defer close(lines)
+		scanner := bufio.NewScanner(res.Body)
+		for scanner.Scan() {
+			select {
+			case lines <- scanner.Text():
+			case <-ctx.Done():
+				return
+			}
+		}
+		if err := scanner.Err(); err != nil {
+			readErrs <- err
+		}
+	}()
+
+	// The stream is live once headers arrive, so events for later writes are seen.
+	if err := os.WriteFile(filepath.Join(root, "c.html"), []byte("c"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	timeout := time.After(10 * time.Second)
+	var sawAdded bool
+	var payload string
+	for !sawAdded || payload == "" {
+		select {
+		case line, ok := <-lines:
+			if !ok {
+				t.Fatal("event stream closed before added event")
+			}
+			switch {
+			case line == "event: added":
+				sawAdded = true
+			case sawAdded && strings.HasPrefix(line, "data: "):
+				payload = strings.TrimPrefix(line, "data: ")
+			}
+		case err := <-readErrs:
+			t.Fatalf("read event stream: %v", err)
+		case <-timeout:
+			t.Fatal("timed out waiting for added event on /api/events")
+		}
+	}
+
+	var event struct {
+		Path string `json:"path"`
+	}
+	if err := json.Unmarshal([]byte(payload), &event); err != nil {
+		t.Fatalf("decode event data %q: %v", payload, err)
+	}
+	if event.Path != "c.html" {
+		t.Fatalf("event path = %q, want c.html", event.Path)
+	}
 }
 
 func assertTreeContains(t *testing.T, url string, wantFiles ...string) {

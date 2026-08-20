@@ -60,7 +60,7 @@ func main() {
 	}
 
 	hub := server.NewHub()
-	srv := server.New(abs, cfg.Name, cat, hub)
+	srv := server.New(abs, cfg.Name, cfg.Host, cat, hub)
 	watchEnabled := true
 	w, err := watcher.Start(abs, cat, func(evs []catalog.Event) {
 		for _, event := range evs {

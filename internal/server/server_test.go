@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -34,7 +35,7 @@ func newTestServer(t *testing.T) (*server.Server, *httptest.Server, string) {
 		t.Fatal(err)
 	}
 
-	srv := server.New(root, "demo", cat, server.NewHub())
+	srv := server.New(root, "demo", "", cat, server.NewHub())
 	return srv, httptest.NewServer(srv.Handler()), root
 }
 
@@ -133,6 +134,99 @@ func TestAppsRefusesCataloguedFileReplacedBySymlink(t *testing.T) {
 	}
 	if strings.Contains(string(body), outsideBody) {
 		t.Fatalf("served outside symlink target with status %d: %q", res.StatusCode, body)
+	}
+}
+
+func TestAppsServesFilenameWithBackslash(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("backslash is a path separator on Windows")
+	}
+	root := t.TempDir()
+	const body = "<h1>weird</h1>"
+	if err := os.WriteFile(filepath.Join(root, `we\ird.html`), []byte(body), 0o644); err != nil {
+		t.Skipf("filesystem rejects backslash in filenames: %v", err)
+	}
+	matcher, err := ignore.New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cat := catalog.New(root, matcher)
+	if err := cat.Scan(); err != nil {
+		t.Fatal(err)
+	}
+	ts := httptest.NewServer(server.New(root, "demo", "", cat, server.NewHub()).Handler())
+	defer ts.Close()
+
+	res, err := http.Get(ts.URL + "/apps/we%5Cird.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, _ := io.ReadAll(res.Body)
+	res.Body.Close()
+	if res.StatusCode != http.StatusOK || string(got) != body {
+		t.Fatalf("status = %d, body = %q, want %d and %q", res.StatusCode, got, http.StatusOK, body)
+	}
+}
+
+func TestRejectsForeignHostHeader(t *testing.T) {
+	_, ts, _ := newTestServer(t)
+	defer ts.Close()
+
+	do := func(host string) int {
+		t.Helper()
+		req, err := http.NewRequest(http.MethodGet, ts.URL+"/api/tree", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if host != "" {
+			req.Host = host
+		}
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		res.Body.Close()
+		return res.StatusCode
+	}
+
+	if got := do("evil.example.com"); got != http.StatusForbidden {
+		t.Fatalf("foreign host: status = %d, want %d", got, http.StatusForbidden)
+	}
+	if got := do("evil.example.com:8080"); got != http.StatusForbidden {
+		t.Fatalf("foreign host with port: status = %d, want %d", got, http.StatusForbidden)
+	}
+	for _, host := range []string{"", "localhost:1234", "127.0.0.1:1234", "[::1]:1234"} {
+		if got := do(host); got != http.StatusOK {
+			t.Fatalf("host %q: status = %d, want %d", host, got, http.StatusOK)
+		}
+	}
+}
+
+func TestAllowsConfiguredHost(t *testing.T) {
+	root := t.TempDir()
+	matcher, err := ignore.New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cat := catalog.New(root, matcher)
+	if err := cat.Scan(); err != nil {
+		t.Fatal(err)
+	}
+	ts := httptest.NewServer(server.New(root, "demo", "192.168.1.10", cat, server.NewHub()).Handler())
+	defer ts.Close()
+
+	req, err := http.NewRequest(http.MethodGet, ts.URL+"/api/tree", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Host = "192.168.1.10:8080"
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("configured host: status = %d, want %d", res.StatusCode, http.StatusOK)
 	}
 }
 

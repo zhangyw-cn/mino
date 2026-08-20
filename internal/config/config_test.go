@@ -27,6 +27,19 @@ func TestLoadCreatesDefaultConfig(t *testing.T) {
 	if _, err := os.Stat(path); err != nil {
 		t.Fatalf("expected config file: %v", err)
 	}
+
+	// The written file must round-trip: a second Load reads it instead of
+	// recreating defaults, so the fields have to survive on disk.
+	reloaded, err := config.Load(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reloaded.Name != cfg.Name || reloaded.Port != cfg.Port || reloaded.Host != cfg.Host {
+		t.Fatalf("reloaded = %+v, want %+v", reloaded, cfg)
+	}
+	if len(reloaded.Ignore) != 0 {
+		t.Fatalf("reloaded ignore = %v, want empty", reloaded.Ignore)
+	}
 }
 
 func TestLoadReadsExistingConfig(t *testing.T) {

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -32,12 +33,11 @@ func Load(root string) (Config, error) {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return Config{}, err
 		}
-		f, err := os.Create(path)
-		if err != nil {
+		var buf bytes.Buffer
+		if err := toml.NewEncoder(&buf).Encode(cfg); err != nil {
 			return Config{}, err
 		}
-		defer f.Close()
-		if err := toml.NewEncoder(f).Encode(cfg); err != nil {
+		if err := os.WriteFile(path, buf.Bytes(), 0o644); err != nil {
 			return Config{}, err
 		}
 		return cfg, nil
