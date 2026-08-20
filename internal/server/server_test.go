@@ -15,7 +15,7 @@ import (
 	"mino/internal/server"
 )
 
-func newTestServer(t *testing.T) (*server.Server, *httptest.Server) {
+func newTestServer(t *testing.T) (*server.Server, *httptest.Server, string) {
 	t.Helper()
 
 	root := t.TempDir()
@@ -35,11 +35,11 @@ func newTestServer(t *testing.T) (*server.Server, *httptest.Server) {
 	}
 
 	srv := server.New(root, "demo", cat, server.NewHub())
-	return srv, httptest.NewServer(srv.Handler())
+	return srv, httptest.NewServer(srv.Handler()), root
 }
 
 func TestTreeSearchAndApps(t *testing.T) {
-	_, ts := newTestServer(t)
+	_, ts, _ := newTestServer(t)
 	defer ts.Close()
 
 	res, err := http.Get(ts.URL + "/api/tree")
@@ -104,8 +104,40 @@ func TestTreeSearchAndApps(t *testing.T) {
 	}
 }
 
+func TestAppsRefusesCataloguedFileReplacedBySymlink(t *testing.T) {
+	_, ts, root := newTestServer(t)
+	defer ts.Close()
+
+	outside := filepath.Join(t.TempDir(), "outside.html")
+	const outsideBody = "<h1>outside secret</h1>"
+	if err := os.WriteFile(outside, []byte(outsideBody), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	app := filepath.Join(root, "notes", "a.html")
+	if err := os.Remove(app); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, app); err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := http.Get(ts.URL + "/apps/notes/a.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, readErr := io.ReadAll(res.Body)
+	res.Body.Close()
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	if strings.Contains(string(body), outsideBody) {
+		t.Fatalf("served outside symlink target with status %d: %q", res.StatusCode, body)
+	}
+}
+
 func TestMetaAndIndex(t *testing.T) {
-	srv, ts := newTestServer(t)
+	srv, ts, _ := newTestServer(t)
 	defer ts.Close()
 
 	assertMeta := func(want bool) {

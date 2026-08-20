@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 
@@ -78,12 +79,26 @@ func (s *Server) appsHandler(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	target, err := catalog.ResolveUnderRoot(s.root, rel)
+	root, err := os.OpenRoot(s.root)
 	if err != nil {
-		http.Error(w, "forbidden", http.StatusForbidden)
+		http.NotFound(w, r)
 		return
 	}
-	http.ServeFile(w, r, target)
+	defer root.Close()
+
+	file, err := root.Open(rel)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	defer file.Close()
+
+	info, err := file.Stat()
+	if err != nil || !info.Mode().IsRegular() {
+		http.NotFound(w, r)
+		return
+	}
+	http.ServeContent(w, r, rel, info.ModTime(), file)
 }
 
 func (s *Server) indexHandler(w http.ResponseWriter, r *http.Request) {
