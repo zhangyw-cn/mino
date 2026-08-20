@@ -20,10 +20,17 @@
     return `/apps/${encoded}?t=${Date.now()}`;
   }
 
-  function beginListingRequest() {
-    if (listingAbort) listingAbort.abort();
-    listingAbort = new AbortController();
+  function invalidateListingRequest() {
+    if (listingAbort) {
+      listingAbort.abort();
+      listingAbort = null;
+    }
     listingRequestId += 1;
+  }
+
+  function beginListingRequest() {
+    invalidateListingRequest();
+    listingAbort = new AbortController();
     return { signal: listingAbort.signal, requestId: listingRequestId };
   }
 
@@ -187,10 +194,14 @@
     }
   }
 
-  search.addEventListener("input", () => {
+  function scheduleSearchListing() {
+    invalidateListingRequest();
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(refreshListing, 150);
-  });
+  }
+
+  search.addEventListener("input", scheduleSearchListing);
+  search.addEventListener("keyup", scheduleSearchListing);
 
   const events = new EventSource("/api/events");
   for (const kind of ["added", "removed", "changed"]) {

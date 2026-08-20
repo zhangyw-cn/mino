@@ -45,3 +45,18 @@ ok  	mino/internal/server
 ### Commit
 
 `fix: encode app paths per segment and cancel stale listing fetches`
+
+## Important review fix
+
+- **Debounce-window stale renders**: on every search `input`/`keyup`, `invalidateListingRequest()` aborts any in-flight listing fetch and bumps the request id before the 150ms debounce; responses that complete during that window are ignored.
+
+### Verification
+
+```text
+PATH=/home/zhangyw/go1.24.4/bin:$PATH go test ./internal/server/ -v
+ok  	mino/internal/server
+```
+
+### Commit
+
+`fix: invalidate listing fetches on search input before debounce`
