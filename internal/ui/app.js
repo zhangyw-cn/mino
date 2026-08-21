@@ -45,7 +45,6 @@
     document.body.classList.toggle("sidebar-collapsed", collapsed);
     activityFiles.setAttribute("aria-expanded", String(!collapsed));
     activityFiles.classList.toggle("active", !collapsed);
-    sidebar.hidden = collapsed;
   }
 
   function toggleSidebar() {
