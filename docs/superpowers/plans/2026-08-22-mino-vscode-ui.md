@@ -83,7 +83,7 @@ Replace the body content with this structure (keep `lang`, charset, viewport, `/
     </div>
     <label class="search-box">
       <span class="search-icon" aria-hidden="true">⌕</span>
-      <span class="sr-only">Search applications</span>
+      <span class="sr-only">Search files</span>
       <input id="search" type="search" placeholder="Search files…" autocomplete="off">
     </label>
   </header>
@@ -92,7 +92,7 @@ Replace the body content with this structure (keep `lang`, charset, viewport, `/
     Live reload unavailable — refresh manually
   </div>
 
-  <div class="workbench">
+  <main class="workbench">
     <nav class="activity-bar" aria-label="Activity">
       <button
         type="button"
@@ -136,7 +136,7 @@ Replace the body content with this structure (keep `lang`, charset, viewport, `/
       </div>
       <iframe id="preview" title="Application preview" hidden></iframe>
     </section>
-  </div>
+  </main>
 
   <script src="/app.js" defer></script>
 </body>
@@ -214,15 +214,21 @@ body {
 .topbar {
   height: 35px;
   padding: 0 12px;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  column-gap: 16px;
   background: var(--bg-shell);
   border-bottom: 1px solid var(--border);
 }
 
-.brand { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  justify-self: start;
+}
 .brand h1 {
   margin: 0;
   overflow: hidden;
@@ -244,6 +250,8 @@ body {
 }
 
 .search-box {
+  grid-column: 2;
+  justify-self: center;
   width: min(420px, 46vw);
   height: 26px;
   display: flex;
@@ -316,6 +324,11 @@ body.sidebar-collapsed .sidebar {
   font: inherit;
 }
 .activity-item:hover { color: var(--fg); }
+.activity-item:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: -2px;
+  color: var(--fg-strong);
+}
 .activity-item.active {
   color: var(--fg-strong);
   border-left-color: var(--accent);
@@ -361,6 +374,11 @@ body.sidebar-collapsed .sidebar {
 .icon-button:hover {
   color: var(--fg);
   background: var(--hover);
+}
+.icon-button:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+  color: var(--fg);
 }
 
 .tree { padding: 6px 8px; font-size: 13px; }
@@ -509,10 +527,10 @@ EOF
 **Interfaces:**
 - Consumes: `#activity-files`, `#sidebar`, `#sidebar-collapse`, `#breadcrumb`, `#search`, existing open/clear preview flow
 - Produces:
-  - `setSidebarCollapsed(collapsed: boolean)` — toggles `body.sidebar-collapsed`, syncs `aria-expanded` on `#activity-files`, toggles `.active` on the activity button when expanded
+  - `setSidebarCollapsed(collapsed: boolean)` — toggles `body.sidebar-collapsed`, sets `sidebar.inert`, moves focus to `#activity-files` when collapsing from within the sidebar, syncs `aria-expanded` / `.active`; never set `sidebar.hidden`
   - `setBreadcrumb(path: string)` — empty → text `No file selected` + `data-empty="true"`; otherwise join `path.split("/")` with ` / ` and `data-empty="false"`
   - `openFile` / `clearPreview` call `setBreadcrumb`
-  - `keydown` on `document`: `(metaKey || ctrlKey) && key === 'f'` → `preventDefault()` + `search.focus()` + `search.select()`
+  - `keydown` on `document`: `(metaKey || ctrlKey) && !altKey && !shiftKey && key === 'f'` → `preventDefault()` + `search.focus()` + `search.select()`
 
 - [ ] **Step 1: Wire DOM refs and sidebar collapse helpers**
 
@@ -589,7 +607,7 @@ Remove any remaining `previewPath` references.
 
 ```js
   document.addEventListener("keydown", (event) => {
-    if (!(event.ctrlKey || event.metaKey)) return;
+    if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey) return;
     if (event.key !== "f" && event.key !== "F") return;
     event.preventDefault();
     search.focus();

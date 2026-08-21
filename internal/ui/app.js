@@ -236,7 +236,7 @@
   search.addEventListener("keyup", scheduleSearchListing);
 
   document.addEventListener("keydown", (event) => {
-    if (!(event.ctrlKey || event.metaKey)) return;
+    if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey) return;
     if (event.key !== "f" && event.key !== "F") return;
     event.preventDefault();
     search.focus();

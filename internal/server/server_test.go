@@ -271,17 +271,71 @@ func TestUIIndexServed(t *testing.T) {
 	if res.StatusCode != http.StatusOK {
 		t.Fatalf("status %d", res.StatusCode)
 	}
+	html := string(body)
 	for _, marker := range []string{
 		"<iframe",
 		"/app.js",
+		`<main class="workbench">`,
 		`id="activity-files"`,
-		`id="sidebar"`,
+		`id="sidebar" class="sidebar"`,
 		`id="sidebar-collapse"`,
 		`id="breadcrumb"`,
 		`class="activity-bar"`,
+		`>Search files</span>`,
 	} {
-		if !strings.Contains(string(body), marker) {
+		if !strings.Contains(html, marker) {
 			t.Fatalf("index missing %q", marker)
+		}
+	}
+}
+
+func TestAppJSWorkbenchContracts(t *testing.T) {
+	_, ts, _ := newTestServer(t)
+	defer ts.Close()
+
+	res, err := http.Get(ts.URL + "/app.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := io.ReadAll(res.Body)
+	res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("status %d", res.StatusCode)
+	}
+	js := string(body)
+	if strings.Contains(js, "sidebar.hidden =") {
+		t.Fatal("app.js must not set sidebar.hidden (breaks workbench grid)")
+	}
+	for _, marker := range []string{
+		"sidebar.inert",
+		"setBreadcrumb",
+		"sidebar-collapsed",
+		"preventDefault",
+		"event.altKey",
+		"event.shiftKey",
+	} {
+		if !strings.Contains(js, marker) {
+			t.Fatalf("app.js missing contract %q", marker)
+		}
+	}
+
+	cssRes, err := http.Get(ts.URL + "/style.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cssBody, _ := io.ReadAll(cssRes.Body)
+	cssRes.Body.Close()
+	if cssRes.StatusCode != http.StatusOK {
+		t.Fatalf("style.css status %d", cssRes.StatusCode)
+	}
+	css := string(cssBody)
+	for _, marker := range []string{
+		".activity-item:focus-visible",
+		".icon-button:focus-visible",
+		"grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr)",
+	} {
+		if !strings.Contains(css, marker) {
+			t.Fatalf("style.css missing contract %q", marker)
 		}
 	}
 }
