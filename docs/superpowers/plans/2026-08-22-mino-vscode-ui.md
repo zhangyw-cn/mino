@@ -530,10 +530,15 @@ Add:
 
 ```js
   function setSidebarCollapsed(collapsed) {
+    // Do not set sidebar.hidden / display:none — that drops the aside from the
+    // three-column workbench grid and traps the preview in the 0-width track.
     document.body.classList.toggle("sidebar-collapsed", collapsed);
     activityFiles.setAttribute("aria-expanded", String(!collapsed));
     activityFiles.classList.toggle("active", !collapsed);
-    sidebar.hidden = collapsed;
+    sidebar.inert = collapsed;
+    if (collapsed && sidebar.contains(document.activeElement)) {
+      activityFiles.focus();
+    }
   }
 
   function toggleSidebar() {
