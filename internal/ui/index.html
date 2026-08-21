@@ -23,17 +23,42 @@
     Live reload unavailable — refresh manually
   </div>
 
-  <main class="workspace">
-    <aside class="sidebar" aria-label="Application files">
-      <div class="pane-heading">Files</div>
+  <div class="workbench">
+    <nav class="activity-bar" aria-label="Activity">
+      <button
+        type="button"
+        id="activity-files"
+        class="activity-item active"
+        aria-label="Explorer"
+        aria-controls="sidebar"
+        aria-expanded="true"
+        title="Explorer"
+      >
+        <span aria-hidden="true">☰</span>
+      </button>
+    </nav>
+
+    <aside id="sidebar" class="sidebar" aria-label="Explorer">
+      <div class="sidebar-header">
+        <span class="sidebar-title">Explorer</span>
+        <button
+          type="button"
+          id="sidebar-collapse"
+          class="icon-button"
+          aria-label="Collapse explorer"
+          title="Collapse explorer"
+        >
+          <span aria-hidden="true">⟨</span>
+        </button>
+      </div>
       <nav id="tree" class="tree">
         <p class="muted">Loading files…</p>
       </nav>
     </aside>
 
     <section class="preview-pane">
-      <div class="preview-bar">
-        <span id="preview-path">Select a file to preview</span>
+      <div class="breadcrumb-bar" aria-live="polite">
+        <div id="breadcrumb" class="breadcrumb">No file selected</div>
       </div>
       <div id="empty-state" class="empty-state">
         <div class="empty-icon" aria-hidden="true">◇</div>
@@ -42,7 +67,7 @@
       </div>
       <iframe id="preview" title="Application preview" hidden></iframe>
     </section>
-  </main>
+  </div>
 
   <script src="/app.js" defer></script>
 </body>

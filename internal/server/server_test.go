@@ -271,9 +271,17 @@ func TestUIIndexServed(t *testing.T) {
 	if res.StatusCode != http.StatusOK {
 		t.Fatalf("status %d", res.StatusCode)
 	}
-	for _, marker := range []string{"<iframe", "/app.js"} {
+	for _, marker := range []string{
+		"<iframe",
+		"/app.js",
+		`id="activity-files"`,
+		`id="sidebar"`,
+		`id="sidebar-collapse"`,
+		`id="breadcrumb"`,
+		`class="activity-bar"`,
+	} {
 		if !strings.Contains(string(body), marker) {
-			t.Fatalf("index missing %q: %q", marker, body)
+			t.Fatalf("index missing %q", marker)
 		}
 	}
 }
