@@ -5,7 +5,10 @@
   const search = document.querySelector("#search");
   const tree = document.querySelector("#tree");
   const preview = document.querySelector("#preview");
-  const previewPath = document.querySelector("#preview-path");
+  const breadcrumb = document.querySelector("#breadcrumb");
+  const activityFiles = document.querySelector("#activity-files");
+  const sidebar = document.querySelector("#sidebar");
+  const sidebarCollapse = document.querySelector("#sidebar-collapse");
   const emptyState = document.querySelector("#empty-state");
   const watchBanner = document.querySelector("#watch-banner");
 
@@ -38,9 +41,30 @@
     return requestId !== listingRequestId;
   }
 
+  function setSidebarCollapsed(collapsed) {
+    document.body.classList.toggle("sidebar-collapsed", collapsed);
+    activityFiles.setAttribute("aria-expanded", String(!collapsed));
+    activityFiles.classList.toggle("active", !collapsed);
+    sidebar.hidden = collapsed;
+  }
+
+  function toggleSidebar() {
+    setSidebarCollapsed(!document.body.classList.contains("sidebar-collapsed"));
+  }
+
+  function setBreadcrumb(path) {
+    if (!path) {
+      breadcrumb.textContent = "No file selected";
+      breadcrumb.dataset.empty = "true";
+      return;
+    }
+    breadcrumb.textContent = path.split("/").join(" / ");
+    breadcrumb.dataset.empty = "false";
+  }
+
   function openFile(path) {
     currentPath = path;
-    previewPath.textContent = path;
+    setBreadcrumb(path);
     preview.src = previewURL(path);
     preview.hidden = false;
     emptyState.hidden = true;
@@ -52,7 +76,7 @@
     preview.removeAttribute("src");
     preview.hidden = true;
     emptyState.hidden = false;
-    previewPath.textContent = "Select a file to preview";
+    setBreadcrumb("");
     markSelection();
   }
 
@@ -200,8 +224,19 @@
     debounceTimer = setTimeout(refreshListing, 150);
   }
 
+  activityFiles.addEventListener("click", toggleSidebar);
+  sidebarCollapse.addEventListener("click", () => setSidebarCollapsed(true));
+
   search.addEventListener("input", scheduleSearchListing);
   search.addEventListener("keyup", scheduleSearchListing);
+
+  document.addEventListener("keydown", (event) => {
+    if (!(event.ctrlKey || event.metaKey)) return;
+    if (event.key !== "f" && event.key !== "F") return;
+    event.preventDefault();
+    search.focus();
+    search.select();
+  });
 
   const events = new EventSource("/api/events");
   for (const kind of ["added", "removed", "changed"]) {
@@ -220,6 +255,7 @@
     });
   }
 
+  setSidebarCollapsed(false);
   loadMeta();
   loadTree();
 })();
