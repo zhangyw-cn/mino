@@ -138,10 +138,30 @@ func (s *Server) appsHandler(w http.ResponseWriter, r *http.Request) {
 	case catalog.IsHTML(rel):
 		s.serveAppFile(w, r, rel)
 	case catalog.IsMarkdown(rel):
-		s.serveMarkdownViewer(w, rel)
+		s.serveMarkdownViewer(w, r, rel)
 	default:
 		http.NotFound(w, r)
 	}
+}
+
+func (s *Server) statRegularRel(rel string) (os.FileInfo, error) {
+	root, err := os.OpenRoot(s.root)
+	if err != nil {
+		return nil, err
+	}
+	defer root.Close()
+
+	file, err := root.Open(rel)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	info, err := file.Stat()
+	if err != nil || !info.Mode().IsRegular() {
+		return nil, os.ErrNotExist
+	}
+	return info, nil
 }
 
 func (s *Server) serveAppFile(w http.ResponseWriter, r *http.Request, rel string) {
@@ -164,11 +184,17 @@ func (s *Server) serveAppFile(w http.ResponseWriter, r *http.Request, rel string
 		http.NotFound(w, r)
 		return
 	}
+	w.Header().Set("X-Content-Type-Options", "nosniff")
 	http.ServeContent(w, r, rel, info.ModTime(), file)
 }
 
-func (s *Server) serveMarkdownViewer(w http.ResponseWriter, rel string) {
+func (s *Server) serveMarkdownViewer(w http.ResponseWriter, r *http.Request, rel string) {
+	if _, err := s.statRegularRel(rel); err != nil {
+		http.NotFound(w, r)
+		return
+	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
 	_ = s.mdViewer.Execute(w, struct{ Path string }{Path: rel})
 }
 
@@ -200,6 +226,7 @@ func (s *Server) rawHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
 	_, _ = io.Copy(w, file)
 }
 
@@ -215,12 +242,20 @@ func (s *Server) mdAssetHandler(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+	if strings.Contains(cleaned, "_test.") || strings.HasSuffix(cleaned, "VENDOR.md") {
+		http.NotFound(w, r)
+		return
+	}
 	data, err := ui.FS.ReadFile("md/" + cleaned)
 	if err != nil {
 		http.NotFound(w, r)
 		return
 	}
 	w.Header().Set("Content-Type", mdAssetContentType(cleaned))
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	if strings.HasPrefix(cleaned, "vendor/") {
+		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+	}
 	_, _ = w.Write(data)
 }
 

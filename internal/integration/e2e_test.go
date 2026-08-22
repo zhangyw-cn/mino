@@ -98,6 +98,74 @@ func TestE2ELiveUpdate(t *testing.T) {
 	assertBodyContains(t, ts.URL+"/apps/doc.md", `data-path="doc.md"`)
 }
 
+func TestE2ESSEAnnouncesNewMarkdown(t *testing.T) {
+	root, _, ts := startStack(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, ts.URL+"/api/events", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Accept", "text/event-stream")
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("GET /api/events: status = %d", res.StatusCode)
+	}
+
+	lines := make(chan string)
+	go func() {
+		defer close(lines)
+		scanner := bufio.NewScanner(res.Body)
+		for scanner.Scan() {
+			select {
+			case lines <- scanner.Text():
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	if err := os.WriteFile(filepath.Join(root, "note.md"), []byte("# note"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	timeout := time.After(10 * time.Second)
+	var sawAdded bool
+	var payload string
+	for !sawAdded || payload == "" {
+		select {
+		case line, ok := <-lines:
+			if !ok {
+				t.Fatal("event stream closed before added event")
+			}
+			switch {
+			case line == "event: added":
+				sawAdded = true
+			case sawAdded && strings.HasPrefix(line, "data: "):
+				payload = strings.TrimPrefix(line, "data: ")
+			}
+		case <-timeout:
+			t.Fatal("timed out waiting for md added event")
+		}
+	}
+
+	var event struct {
+		Path string `json:"path"`
+	}
+	if err := json.Unmarshal([]byte(payload), &event); err != nil {
+		t.Fatalf("decode event data %q: %v", payload, err)
+	}
+	if event.Path != "note.md" {
+		t.Fatalf("event path = %q, want note.md", event.Path)
+	}
+}
+
 func TestE2ESSEAnnouncesNewFile(t *testing.T) {
 	root, _, ts := startStack(t)
 
@@ -229,7 +297,11 @@ func assertBodyContains(t *testing.T, url, want string) {
 	t.Helper()
 	body := getOKBody(t, url)
 	if !strings.Contains(string(body), want) {
-		t.Fatalf("GET %s: body = %q, want substring %q", url, body, want)
+		preview := string(body)
+		if len(preview) > 240 {
+			preview = preview[:240] + "…"
+		}
+		t.Fatalf("GET %s: body preview = %q, want substring %q", url, preview, want)
 	}
 }
 

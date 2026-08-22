@@ -2,7 +2,7 @@
 
 Downloaded on: 2026-08-22
 
-All commands are run from `internal/ui/md/vendor/`. Checksums are SHA-256 of the files as committed (KaTeX CSS is after the font-URL rewrite).
+All commands are run from `internal/ui/md/vendor/` (see `internal/ui/VENDOR.md` for versions). Checksums are SHA-256 of the files as committed (KaTeX CSS is after the font-URL rewrite; woff/ttf fallbacks removed).
 
 Pinned versions match the markdown-preview plan. `highlight.min.js` is taken from `@highlightjs/cdn-assets@11.11.1` (same highlight.js 11.11.1 browser build) because `https://cdn.jsdelivr.net/npm/highlight.js@11.11.1/highlight.min.js` returns 404.
 

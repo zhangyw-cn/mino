@@ -2,7 +2,7 @@ import { createRequire } from "node:module";
 import assert from "node:assert/strict";
 import test from "node:test";
 
-const { preprocessMath } = createRequire(import.meta.url)("./preprocess.js");
+const { preprocessMath } = createRequire(import.meta.url)("../md/preprocess.js");
 
 function mathBodies(html) {
   const out = [];
@@ -16,6 +16,13 @@ function mathBodies(html) {
 
 test("fence-internal $ is not math", () => {
   const src = "```js\nconst x = $foo$\n```";
+  const out = preprocessMath(src);
+  assert.equal(out, src);
+  assert.doesNotMatch(out, /math-inline|math-display/);
+});
+
+test("indented code $ is not math", () => {
+  const src = "    const x = $foo$\n    return x;\n";
   const out = preprocessMath(src);
   assert.equal(out, src);
   assert.doesNotMatch(out, /math-inline|math-display/);
@@ -49,6 +56,13 @@ test("inline $a < b$ is escaped before marked", () => {
   const out = preprocessMath("$a < b$");
   assert.match(out, /<span class="math-inline">a &lt; b<\/span>/);
   assert.ok(!out.includes("a < b"));
+});
+
+test("currency amounts are not math", () => {
+  const src = "Costs $5 and $10 total.";
+  const out = preprocessMath(src);
+  assert.equal(out, src);
+  assert.doesNotMatch(out, /math-inline|math-display/);
 });
 
 test("$$ display math still works", () => {

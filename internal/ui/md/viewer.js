@@ -71,7 +71,8 @@
       try {
         hljs.highlightElement(block);
       } catch (_) {
-        /* ignore */
+        block.classList.add("render-error");
+        block.textContent = "Highlight failed";
       }
     });
 

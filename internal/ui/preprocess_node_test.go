@@ -15,7 +15,7 @@ func TestPreprocessMath(t *testing.T) {
 	if !ok {
 		t.Fatal("runtime.Caller failed")
 	}
-	testFile := filepath.Join(filepath.Dir(file), "md", "preprocess_test.mjs")
+	testFile := filepath.Join(filepath.Dir(file), "testdata", "preprocess_test.mjs")
 	cmd := exec.Command("node", "--test", testFile)
 	cmd.Dir = filepath.Dir(testFile)
 	out, err := cmd.CombinedOutput()

@@ -116,6 +116,7 @@ func TestMDVendorAssetsServed(t *testing.T) {
 		"/md/vendor/marked.min.js",
 		"/md/vendor/purify.min.js",
 		"/md/vendor/highlight.min.js",
+		"/md/vendor/highlight.min.css",
 		"/md/vendor/katex.min.js",
 		"/md/vendor/mermaid.min.js",
 		"/md/vendor/katex.min.css",
@@ -149,7 +150,19 @@ func TestMDVendorAssetsServed(t *testing.T) {
 			if strings.Contains(css, "url(fonts/") {
 				t.Fatal("katex.min.css still has relative font URLs")
 			}
+			if strings.Contains(css, ".woff)") || strings.Contains(css, ".ttf)") {
+				t.Fatal("katex.min.css still references woff/ttf fallbacks")
+			}
 		}
+	}
+
+	res, err := http.Get(ts.URL + "/md/preprocess_test.mjs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusNotFound {
+		t.Fatalf("test artifact status %d, want 404", res.StatusCode)
 	}
 }
 
@@ -286,6 +299,105 @@ func TestMarkdownAppsAndRaw(t *testing.T) {
 	res.Body.Close()
 	if !strings.Contains(string(body), "notes/readme.md") {
 		t.Fatalf("%s", body)
+	}
+}
+
+func TestRawRefusesCataloguedMdReplacedBySymlink(t *testing.T) {
+	_, ts, root := newTestServer(t)
+	defer ts.Close()
+
+	outside := filepath.Join(t.TempDir(), "outside.txt")
+	const outsideBody = "outside secret"
+	if err := os.WriteFile(outside, []byte(outsideBody), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	md := filepath.Join(root, "notes", "readme.md")
+	if err := os.Remove(md); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, md); err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := http.Get(ts.URL + "/api/raw/notes/readme.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, readErr := io.ReadAll(res.Body)
+	res.Body.Close()
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	if res.StatusCode == http.StatusOK && strings.Contains(string(body), outsideBody) {
+		t.Fatalf("served outside symlink target: %q", body)
+	}
+	if res.StatusCode != http.StatusNotFound {
+		t.Fatalf("status %d, want 404", res.StatusCode)
+	}
+}
+
+func TestMarkdownViewer404WhenFileRemoved(t *testing.T) {
+	srv, ts, root := newTestServer(t)
+	defer ts.Close()
+
+	md := filepath.Join(root, "notes", "readme.md")
+	if err := os.Remove(md); err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := http.Get(ts.URL + "/apps/notes/readme.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusNotFound {
+		t.Fatalf("status %d, want 404 when file removed but catalog stale", res.StatusCode)
+	}
+
+	res, err = http.Get(ts.URL + "/api/raw/notes/readme.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusNotFound {
+		t.Fatalf("raw status %d, want 404 when file removed", res.StatusCode)
+	}
+	_ = srv
+}
+
+func TestMarkdownViewerDataPathEscapesQuotes(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "notes"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	name := `we"ird.md`
+	if err := os.WriteFile(filepath.Join(root, "notes", name), []byte("# x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	matcher, err := ignore.New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cat := catalog.New(root, matcher)
+	if err := cat.Scan(); err != nil {
+		t.Fatal(err)
+	}
+	ts := httptest.NewServer(server.New(root, "demo", "", cat, server.NewHub()).Handler())
+	defer ts.Close()
+
+	res, err := http.Get(ts.URL + "/apps/notes/we%22ird.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := io.ReadAll(res.Body)
+	res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("status %d", res.StatusCode)
+	}
+	if !strings.Contains(string(body), `data-path="notes/we&#34;ird.md"`) &&
+		!strings.Contains(string(body), `data-path="notes/we&quot;ird.md"`) {
+		t.Fatalf("missing escaped data-path: %s", body)
 	}
 }
 

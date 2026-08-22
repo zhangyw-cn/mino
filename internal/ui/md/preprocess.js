@@ -92,6 +92,44 @@
     return source.length;
   }
 
+  function lineIndent(source, from) {
+    let pos = from;
+    let indent = 0;
+    while (pos < source.length && indent < 4 && (source[pos] === " " || source[pos] === "\t")) {
+      indent += source[pos] === "\t" ? 4 : 1;
+      pos++;
+    }
+    return indent;
+  }
+
+  // GFM indented code blocks (4+ leading spaces on a line).
+  function indentCodeExtent(source, i) {
+    if (i !== 0 && source[i - 1] !== "\n") {
+      return 0;
+    }
+    if (lineIndent(source, i) < 4) {
+      return 0;
+    }
+    let end = i;
+    while (end < source.length) {
+      if (end > i && source[end - 1] !== "\n") {
+        break;
+      }
+      const lineEnd = source.indexOf("\n", end);
+      const next = lineEnd === -1 ? source.length : lineEnd;
+      const line = source.slice(end, next);
+      if (line.trim() === "") {
+        end = next === source.length ? next : next + 1;
+        continue;
+      }
+      if (lineIndent(source, end) < 4) {
+        break;
+      }
+      end = next === source.length ? next : next + 1;
+    }
+    return end - i;
+  }
+
   function protectSegments(source) {
     const stash = [];
     const protect = (chunk) => {
@@ -122,6 +160,13 @@
         const closeAt = findFenceClose(source, lineEnd < n ? lineEnd + 1 : lineEnd, fenceChar, fenceLen);
         out += protect(source.slice(i, closeAt));
         i = closeAt;
+        continue;
+      }
+
+      const indentSkip = indentCodeExtent(source, i);
+      if (indentSkip) {
+        out += protect(source.slice(i, i + indentSkip));
+        i += indentSkip;
         continue;
       }
 

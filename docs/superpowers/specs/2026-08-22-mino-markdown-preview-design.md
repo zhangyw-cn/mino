@@ -83,7 +83,7 @@ Fixed order inside the viewer:
 4. Inject into the preview container.
 5. Post-process on the sanitized DOM:
    - Fenced code blocks → syntax highlight
-   - Math: require `$…$` and `$$…$$`; also support `\(` / `\[` via the KaTeX integration chosen in the implementation plan
+   - Math: require `$…$` and `$$…$$`; also support `\(` / `\[` via the KaTeX integration chosen in the implementation plan. Display `\[` / `\]` delimiters must appear on their own lines (so academic citations like `\[1\]` stay literal); inline `\(...\)` remains supported.
    - ` ```mermaid ` fences → Mermaid → SVG
 
 Per-block failures (one Mermaid/KaTeX/highlight error) show a short placeholder for that block; the rest of the document still renders. Fetch/parse failures show a short page-level error state.

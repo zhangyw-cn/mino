@@ -159,6 +159,67 @@ func TestTreePlacesRootFileDirectlyUnderRoot(t *testing.T) {
 	}
 }
 
+func TestApplyFSChangeMarkdown(t *testing.T) {
+	root, c := setupWorkspace(t)
+	p := filepath.Join(root, "notes", "readme.md")
+	if err := os.WriteFile(p, []byte("# hi"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	evs := c.ApplyFSChange(p, false)
+	if !c.Has("notes/readme.md") {
+		t.Fatal("expected md add")
+	}
+	found := false
+	for _, e := range evs {
+		if e.Kind == catalog.EventAdded && e.Path == "notes/readme.md" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("events: %+v", evs)
+	}
+	if err := os.Remove(p); err != nil {
+		t.Fatal(err)
+	}
+	evs = c.ApplyFSChange(p, true)
+	if c.Has("notes/readme.md") {
+		t.Fatal("expected remove")
+	}
+	if len(evs) == 0 || evs[0].Kind != catalog.EventRemoved {
+		t.Fatalf("events: %+v", evs)
+	}
+}
+
+func TestScanIgnoresMarkdownUnderIgnoreGlob(t *testing.T) {
+	root := t.TempDir()
+	mustWrite := func(rel, body string) {
+		p := filepath.Join(root, rel)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	mustWrite("archive/secret.md", "# secret")
+	mustWrite("ok.md", "# ok")
+
+	m, err := ignore.New([]string{"archive/**"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := catalog.New(root, m)
+	if err := c.Scan(); err != nil {
+		t.Fatal(err)
+	}
+	if c.Has("archive/secret.md") {
+		t.Fatal("ignored md should not be cataloged")
+	}
+	if !c.Has("ok.md") {
+		t.Fatal("expected ok.md in catalog")
+	}
+}
+
 func TestApplyFSChange(t *testing.T) {
 	root, c := setupWorkspace(t)
 	p := filepath.Join(root, "notes", "b.html")
