@@ -646,6 +646,7 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 		"No matching files.",
 		`key === "e"`,
 		`key === "p"`,
+		"pickerRows[activeIndex]?.path",
 	} {
 		if !strings.Contains(js, marker) {
 			t.Fatalf("app.js missing contract %q", marker)

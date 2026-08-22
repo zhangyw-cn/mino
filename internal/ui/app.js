@@ -281,7 +281,7 @@
   }
 
   function showPickerMessage(message) {
-    const status = document.createElement("p");
+    const status = document.createElement("li");
     status.className = "quick-open-empty";
     status.textContent = message;
     quickOpen.replaceChildren(status);
@@ -305,6 +305,7 @@
 
   function renderPicker() {
     const query = search.value.trim();
+    const previousPath = pickerRows[activeIndex]?.path;
     if (!query) {
       if (!recents.length) {
         showPickerMessage("Type to search files");
@@ -348,7 +349,10 @@
       quickOpen.append(item);
     });
 
-    if (activeIndex < 0 || activeIndex >= pickerRows.length) activeIndex = 0;
+    const restored = previousPath
+      ? pickerRows.findIndex((row) => row.path === previousPath)
+      : -1;
+    activeIndex = restored >= 0 ? restored : 0;
     markPickerActive();
   }
 
@@ -412,14 +416,17 @@
   });
   search.addEventListener("input", () => {
     if (!pickerOpen) setPickerOpen(true);
+    pickerRows = [];
     activeIndex = 0;
     renderPicker();
   });
   search.addEventListener("keydown", (event) => {
     if (event.key === "ArrowDown") {
+      if (!pickerRows.length) return;
       event.preventDefault();
       moveActive(1);
     } else if (event.key === "ArrowUp") {
+      if (!pickerRows.length) return;
       event.preventDefault();
       moveActive(-1);
     } else if (event.key === "Enter") {
