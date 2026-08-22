@@ -120,6 +120,7 @@ func TestMDVendorAssetsServed(t *testing.T) {
 		"/md/vendor/mermaid.min.js",
 		"/md/vendor/katex.min.css",
 		"/md/viewer.css",
+		"/md/preprocess.js",
 		"/md/vendor/fonts/KaTeX_Main-Regular.woff2",
 	} {
 		res, err := http.Get(ts.URL + path)
@@ -169,7 +170,15 @@ func TestViewerPipelineMarkers(t *testing.T) {
 		t.Fatalf("status %d", res.StatusCode)
 	}
 	js := string(body)
-	for _, marker := range []string{"DOMPurify", "mermaid", "katex", "/api/raw/"} {
+	for _, marker := range []string{
+		"DOMPurify",
+		"mermaid",
+		"katex",
+		"/api/raw/",
+		"MinoMDPreprocess",
+		`securityLevel: "strict"`,
+		"nodes: [node]",
+	} {
 		if !strings.Contains(js, marker) {
 			t.Fatalf("viewer.js missing %q", marker)
 		}
@@ -198,6 +207,9 @@ func TestMarkdownAppsAndRaw(t *testing.T) {
 	}
 	if !strings.Contains(html, "/md/viewer.js") {
 		t.Fatalf("missing viewer.js: %s", body)
+	}
+	if !strings.Contains(html, "/md/preprocess.js") {
+		t.Fatalf("missing preprocess.js: %s", body)
 	}
 
 	res, err = http.Get(ts.URL + "/md/viewer.js")
