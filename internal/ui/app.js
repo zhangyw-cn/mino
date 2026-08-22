@@ -3,6 +3,8 @@
 
   const title = document.querySelector("#title");
   const search = document.querySelector("#search");
+  const searchWrap = document.querySelector(".search-wrap");
+  const quickOpen = document.querySelector("#quick-open");
   const tree = document.querySelector("#tree");
   const preview = document.querySelector("#preview");
   const breadcrumb = document.querySelector("#breadcrumb");
@@ -14,9 +16,14 @@
 
   const expandedPaths = new Set([""]);
   let currentPath = "";
-  let debounceTimer;
   let listingAbort = null;
   let listingRequestId = 0;
+  let lastTree = null;
+  let fileIndex = [];
+  let recents = [];
+  let pickerOpen = false;
+  let activeIndex = -1;
+  let pickerRows = [];
 
   function previewURL(path) {
     const encoded = path.split("/").map(encodeURIComponent).join("/");
@@ -42,8 +49,6 @@
   }
 
   function setSidebarCollapsed(collapsed) {
-    // Do not set sidebar.hidden / display:none — that drops the aside from the
-    // three-column workbench grid and traps the preview in the 0-width track.
     document.body.classList.toggle("sidebar-collapsed", collapsed);
     activityFiles.setAttribute("aria-expanded", String(!collapsed));
     activityFiles.classList.toggle("active", !collapsed);
@@ -67,7 +72,16 @@
     breadcrumb.dataset.empty = "false";
   }
 
+  function rememberOpen(path) {
+    recents = [path, ...recents.filter((item) => item !== path)].slice(0, 10);
+  }
+
+  function forgetPath(path) {
+    recents = recents.filter((item) => item !== path);
+  }
+
   function openFile(path) {
+    rememberOpen(path);
     currentPath = path;
     setBreadcrumb(path);
     preview.src = previewURL(path);
@@ -89,6 +103,32 @@
     tree.querySelectorAll(".tree-row.file").forEach((row) => {
       row.classList.toggle("selected", row.dataset.path === currentPath);
     });
+  }
+
+  function flattenFiles(node, out) {
+    if (!node) return out;
+    if (node.type === "file" && node.path) out.push(node.path);
+    for (const child of node.children || []) flattenFiles(child, out);
+    return out;
+  }
+
+  function ancestorPaths(path) {
+    const parts = path.split("/");
+    const ancestors = [""];
+    for (let i = 0; i < parts.length - 1; i += 1) {
+      ancestors.push(parts.slice(0, i + 1).join("/"));
+    }
+    return ancestors;
+  }
+
+  function basename(path) {
+    const slash = path.lastIndexOf("/");
+    return slash < 0 ? path : path.slice(slash + 1);
+  }
+
+  function parentDir(path) {
+    const slash = path.lastIndexOf("/");
+    return slash < 0 ? "" : path.slice(0, slash);
   }
 
   function makeRow(node) {
@@ -153,6 +193,21 @@
     tree.append(status);
   }
 
+  function renderTreeFromCache() {
+    if (!lastTree) {
+      loadTree();
+      return;
+    }
+    const list = document.createElement("ul");
+    list.className = "tree-list";
+    for (const node of lastTree.children || []) {
+      list.append(makeNode(node));
+    }
+    tree.replaceChildren(list);
+    if (!list.children.length) showMessage("No HTML files found.");
+    markSelection();
+  }
+
   async function loadTree() {
     const { signal, requestId } = beginListingRequest();
     try {
@@ -161,53 +216,15 @@
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const root = await response.json();
       if (isStaleListingRequest(requestId)) return;
-      const list = document.createElement("ul");
-      list.className = "tree-list";
-      for (const node of root?.children || []) {
-        list.append(makeNode(node));
-      }
-      tree.replaceChildren(list);
-      if (!list.children.length) showMessage("No HTML files found.");
+      lastTree = root;
+      fileIndex = flattenFiles(root, []);
+      renderTreeFromCache();
+      if (pickerOpen) renderPicker();
     } catch (error) {
       if (error.name === "AbortError") return;
       console.error("Failed to load tree", error);
       showMessage("Could not load files.");
     }
-  }
-
-  async function loadSearch(query) {
-    const { signal, requestId } = beginListingRequest();
-    try {
-      const response = await fetch(
-        `/api/search?q=${encodeURIComponent(query)}`,
-        { signal },
-      );
-      if (isStaleListingRequest(requestId)) return;
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const payload = await response.json();
-      if (isStaleListingRequest(requestId)) return;
-      const list = document.createElement("ul");
-      list.className = "tree-list search-results";
-      for (const path of payload.results || []) {
-        list.append(makeNode({
-          name: path,
-          path,
-          type: "file",
-          children: [],
-        }));
-      }
-      tree.replaceChildren(list);
-      if (!list.children.length) showMessage("No matching files.");
-    } catch (error) {
-      if (error.name === "AbortError") return;
-      console.error("Search failed", error);
-      showMessage("Search unavailable.");
-    }
-  }
-
-  function refreshListing() {
-    const query = search.value.trim();
-    return query ? loadSearch(query) : loadTree();
   }
 
   async function loadMeta() {
@@ -223,24 +240,217 @@
     }
   }
 
-  function scheduleSearchListing() {
-    invalidateListingRequest();
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(refreshListing, 150);
+  function appendHighlighted(container, text, matches, offset) {
+    const local = new Set();
+    for (const index of matches) {
+      if (index >= offset && index < offset + text.length) local.add(index - offset);
+    }
+    let i = 0;
+    while (i < text.length) {
+      if (local.has(i)) {
+        let j = i + 1;
+        while (j < text.length && local.has(j)) j += 1;
+        const mark = document.createElement("mark");
+        mark.textContent = text.slice(i, j);
+        container.append(mark);
+        i = j;
+      } else {
+        let j = i + 1;
+        while (j < text.length && !local.has(j)) j += 1;
+        container.append(text.slice(i, j));
+        i = j;
+      }
+    }
+  }
+
+  function setPickerOpen(open) {
+    if (open) {
+      pickerOpen = true;
+      quickOpen.hidden = false;
+      search.setAttribute("aria-expanded", "true");
+      return;
+    }
+    pickerOpen = false;
+    quickOpen.hidden = true;
+    search.setAttribute("aria-expanded", "false");
+    search.value = "";
+    search.removeAttribute("aria-activedescendant");
+    activeIndex = -1;
+    pickerRows = [];
+    quickOpen.replaceChildren();
+  }
+
+  function showPickerMessage(message) {
+    const status = document.createElement("li");
+    status.className = "quick-open-empty";
+    status.textContent = message;
+    quickOpen.replaceChildren(status);
+    pickerRows = [];
+    activeIndex = -1;
+    search.removeAttribute("aria-activedescendant");
+  }
+
+  function markPickerActive() {
+    const items = quickOpen.querySelectorAll(".quick-open-item");
+    items.forEach((item, index) => {
+      const isActive = index === activeIndex;
+      item.classList.toggle("active", isActive);
+      item.setAttribute("aria-selected", String(isActive));
+      if (isActive) {
+        search.setAttribute("aria-activedescendant", item.id);
+        item.scrollIntoView({ block: "nearest" });
+      }
+    });
+  }
+
+  function renderPicker() {
+    const query = search.value.trim();
+    const previousPath = pickerRows[activeIndex]?.path;
+    if (!query) {
+      if (!recents.length) {
+        showPickerMessage("Type to search files");
+        return;
+      }
+      pickerRows = recents.map((path) => ({ path, score: 0, matches: [] }));
+    } else {
+      pickerRows = globalThis.MinoFuzzy.filter(query, fileIndex);
+      if (!pickerRows.length) {
+        showPickerMessage("No matching files.");
+        return;
+      }
+    }
+
+    quickOpen.replaceChildren();
+    pickerRows.forEach((row, index) => {
+      const item = document.createElement("li");
+      const button = document.createElement("button");
+      button.type = "button";
+      button.id = `quick-open-${index}`;
+      button.className = "quick-open-item";
+      button.setAttribute("role", "option");
+      button.dataset.path = row.path;
+
+      const name = document.createElement("span");
+      name.className = "quick-open-name";
+      const base = basename(row.path);
+      const baseOffset = row.path.length - base.length;
+      appendHighlighted(name, base, row.matches, baseOffset);
+
+      const dir = document.createElement("span");
+      dir.className = "quick-open-dir";
+      const parent = parentDir(row.path);
+      if (parent) appendHighlighted(dir, parent, row.matches, 0);
+
+      button.append(name);
+      if (parent) button.append(dir);
+      button.addEventListener("mousedown", (event) => event.preventDefault());
+      button.addEventListener("click", () => acceptPath(row.path));
+      item.append(button);
+      quickOpen.append(item);
+    });
+
+    const restored = previousPath
+      ? pickerRows.findIndex((row) => row.path === previousPath)
+      : -1;
+    activeIndex = restored >= 0 ? restored : 0;
+    markPickerActive();
+  }
+
+  function moveActive(delta) {
+    if (!pickerRows.length) return;
+    const next = activeIndex + delta;
+    if (next < 0 || next >= pickerRows.length) return;
+    activeIndex = next;
+    markPickerActive();
+  }
+
+  function acceptPath(path) {
+    if (!fileIndex.includes(path)) {
+      forgetPath(path);
+      renderPicker();
+      return;
+    }
+    for (const ancestor of ancestorPaths(path)) expandedPaths.add(ancestor);
+    openFile(path);
+    renderTreeFromCache();
+    setPickerOpen(false);
+    preview.focus();
+  }
+
+  function acceptActive() {
+    if (activeIndex < 0 || activeIndex >= pickerRows.length) return;
+    acceptPath(pickerRows[activeIndex].path);
+  }
+
+  function isQuickOpenHotkey(event) {
+    if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey) return false;
+    const key = event.key;
+    return key === "e" || key === "E" || key === "p" || key === "P";
+  }
+
+  function onQuickOpenHotkey(event) {
+    if (!isQuickOpenHotkey(event)) return;
+    event.preventDefault();
+    search.focus();
+    search.select();
+    setPickerOpen(true);
+    renderPicker();
+  }
+
+  function bindPreviewHotkeys() {
+    try {
+      const doc = preview.contentDocument;
+      if (!doc) return;
+      doc.addEventListener("keydown", onQuickOpenHotkey, true);
+    } catch (_error) {
+      // Same-origin read can fail; skip silently.
+    }
   }
 
   activityFiles.addEventListener("click", toggleSidebar);
   sidebarCollapse.addEventListener("click", () => setSidebarCollapsed(true));
 
-  search.addEventListener("input", scheduleSearchListing);
-  search.addEventListener("keyup", scheduleSearchListing);
+  search.addEventListener("focus", () => {
+    setPickerOpen(true);
+    renderPicker();
+  });
+  search.addEventListener("input", () => {
+    if (!pickerOpen) setPickerOpen(true);
+    pickerRows = [];
+    activeIndex = 0;
+    renderPicker();
+  });
+  search.addEventListener("keydown", (event) => {
+    if (event.key === "ArrowDown") {
+      if (!pickerRows.length) return;
+      event.preventDefault();
+      moveActive(1);
+    } else if (event.key === "ArrowUp") {
+      if (!pickerRows.length) return;
+      event.preventDefault();
+      moveActive(-1);
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      acceptActive();
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      setPickerOpen(false);
+      search.blur();
+    }
+  });
 
-  document.addEventListener("keydown", (event) => {
-    if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey) return;
-    if (event.key !== "f" && event.key !== "F") return;
-    event.preventDefault();
-    search.focus();
-    search.select();
+  document.addEventListener("keydown", onQuickOpenHotkey, true);
+  preview.addEventListener("load", bindPreviewHotkeys);
+
+  document.addEventListener("pointerdown", (event) => {
+    if (!pickerOpen) return;
+    if (searchWrap.contains(event.target)) return;
+    setPickerOpen(false);
+  });
+  document.addEventListener("focusin", (event) => {
+    if (!pickerOpen) return;
+    if (searchWrap.contains(event.target)) return;
+    setPickerOpen(false);
   });
 
   const events = new EventSource("/api/events");
@@ -253,7 +463,8 @@
         console.error("Invalid live reload event", error);
         return;
       }
-      refreshListing();
+      if (kind === "removed") forgetPath(event.path);
+      loadTree();
       if (event.path !== currentPath) return;
       if (kind === "changed") preview.src = previewURL(currentPath);
       if (kind === "removed") clearPreview();

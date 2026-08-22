@@ -578,10 +578,35 @@ func TestUIIndexServed(t *testing.T) {
 		`id="breadcrumb"`,
 		`class="activity-bar"`,
 		`>Search files</span>`,
+		`id="quick-open"`,
+		`/fuzzy.js`,
+		`class="search-wrap"`,
 	} {
 		if !strings.Contains(html, marker) {
 			t.Fatalf("index missing %q", marker)
 		}
+	}
+}
+
+func TestFuzzyJSServed(t *testing.T) {
+	_, ts, _ := newTestServer(t)
+	defer ts.Close()
+
+	res, err := http.Get(ts.URL + "/fuzzy.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := io.ReadAll(res.Body)
+	res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("status %d", res.StatusCode)
+	}
+	js := string(body)
+	if !strings.Contains(js, "MinoFuzzy") {
+		t.Fatal("fuzzy.js missing MinoFuzzy")
+	}
+	if !strings.Contains(js, "function filter") {
+		t.Fatal("fuzzy.js missing filter")
 	}
 }
 
@@ -602,6 +627,12 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 	if strings.Contains(js, "sidebar.hidden =") {
 		t.Fatal("app.js must not set sidebar.hidden (breaks workbench grid)")
 	}
+	if strings.Contains(js, "/api/search") {
+		t.Fatal("app.js must not call /api/search")
+	}
+	if strings.Contains(js, `key !== "f"`) || strings.Contains(js, `key !== 'f'`) {
+		t.Fatal("app.js must not intercept Ctrl/Cmd+F")
+	}
 	for _, marker := range []string{
 		"sidebar.inert",
 		"setBreadcrumb",
@@ -609,6 +640,13 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 		"preventDefault",
 		"event.altKey",
 		"event.shiftKey",
+		"MinoFuzzy",
+		"contentDocument",
+		"Type to search files",
+		"No matching files.",
+		`key === "e"`,
+		`key === "p"`,
+		"pickerRows[activeIndex]?.path",
 	} {
 		if !strings.Contains(js, marker) {
 			t.Fatalf("app.js missing contract %q", marker)
