@@ -21,12 +21,15 @@ import (
 )
 
 // startStack wires a catalog, watcher, hub, and HTTP server over a temp root
-// holding a single a.html file, mirroring how mino runs.
+// holding a.html and doc.md, mirroring how mino runs.
 func startStack(t *testing.T) (root string, cat *catalog.Catalog, ts *httptest.Server) {
 	t.Helper()
 
 	root = t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "a.html"), []byte("v1"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "doc.md"), []byte("# doc"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -64,7 +67,9 @@ func startStack(t *testing.T) (root string, cat *catalog.Catalog, ts *httptest.S
 func TestE2ELiveUpdate(t *testing.T) {
 	root, cat, ts := startStack(t)
 
-	assertTreeContains(t, ts.URL+"/api/tree", "a.html")
+	assertTreeContains(t, ts.URL+"/api/tree", "a.html", "doc.md")
+	assertBody(t, ts.URL+"/api/raw/doc.md", "# doc")
+	assertBodyContains(t, ts.URL+"/apps/doc.md", `data-path="doc.md"`)
 
 	var search struct {
 		Results []string `json:"results"`
@@ -85,10 +90,12 @@ func TestE2ELiveUpdate(t *testing.T) {
 		t.Fatal("watcher did not add b.html to catalog")
 	}
 
-	assertTreeContains(t, ts.URL+"/api/tree", "a.html", "b.html")
+	assertTreeContains(t, ts.URL+"/api/tree", "a.html", "b.html", "doc.md")
 
 	assertBody(t, ts.URL+"/apps/a.html", "v1")
 	assertBody(t, ts.URL+"/apps/b.html", "b")
+	assertBody(t, ts.URL+"/api/raw/doc.md", "# doc")
+	assertBodyContains(t, ts.URL+"/apps/doc.md", `data-path="doc.md"`)
 }
 
 func TestE2ESSEAnnouncesNewFile(t *testing.T) {
@@ -212,6 +219,22 @@ func getJSON(t *testing.T, url string, target any) {
 
 func assertBody(t *testing.T, url, want string) {
 	t.Helper()
+	body := getOKBody(t, url)
+	if string(body) != want {
+		t.Fatalf("GET %s: body = %q, want %q", url, body, want)
+	}
+}
+
+func assertBodyContains(t *testing.T, url, want string) {
+	t.Helper()
+	body := getOKBody(t, url)
+	if !strings.Contains(string(body), want) {
+		t.Fatalf("GET %s: body = %q, want substring %q", url, body, want)
+	}
+}
+
+func getOKBody(t *testing.T, url string) []byte {
+	t.Helper()
 	response, err := http.Get(url)
 	if err != nil {
 		t.Fatal(err)
@@ -224,7 +247,5 @@ func assertBody(t *testing.T, url, want string) {
 	if response.StatusCode != http.StatusOK {
 		t.Fatalf("GET %s: status = %d, want %d; body = %q", url, response.StatusCode, http.StatusOK, body)
 	}
-	if string(body) != want {
-		t.Fatalf("GET %s: body = %q, want %q", url, body, want)
-	}
+	return body
 }
