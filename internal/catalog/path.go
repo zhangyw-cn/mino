@@ -13,6 +13,14 @@ func IsHTML(name string) bool {
 	return ext == ".html" || ext == ".htm"
 }
 
+func IsMarkdown(name string) bool {
+	return strings.ToLower(filepath.Ext(name)) == ".md"
+}
+
+func IsEntry(name string) bool {
+	return IsHTML(name) || IsMarkdown(name)
+}
+
 func NormalizeRel(p string) (string, error) {
 	return normalizeRel(p, runtime.GOOS == "windows")
 }

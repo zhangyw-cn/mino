@@ -15,6 +15,21 @@ func TestIsHTML(t *testing.T) {
 	}
 }
 
+func TestIsMarkdown(t *testing.T) {
+	if !catalog.IsMarkdown("a.MD") || !catalog.IsMarkdown("readme.md") || catalog.IsMarkdown("a.markdown") {
+		t.Fatal("IsMarkdown mismatch")
+	}
+}
+
+func TestIsEntry(t *testing.T) {
+	if !catalog.IsEntry("a.html") || !catalog.IsEntry("b.htm") || !catalog.IsEntry("c.md") {
+		t.Fatal("IsEntry should accept html/htm/md")
+	}
+	if catalog.IsEntry("c.markdown") || catalog.IsEntry("d.txt") {
+		t.Fatal("IsEntry should reject non-entry types")
+	}
+}
+
 func TestNormalizeRelRejectsTraversal(t *testing.T) {
 	if _, err := catalog.NormalizeRel("../x"); err == nil {
 		t.Fatal("expected error")

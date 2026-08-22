@@ -103,7 +103,7 @@ func (c *Catalog) scanEntry(files, dirs map[string]struct{}, filePath string, en
 	}
 	if entry.IsDir() {
 		dirs[rel] = struct{}{}
-	} else if entry.Type().IsRegular() && IsHTML(entry.Name()) {
+	} else if entry.Type().IsRegular() && IsEntry(entry.Name()) {
 		files[rel] = struct{}{}
 	}
 	return nil
@@ -230,7 +230,7 @@ func (c *Catalog) ApplyFSChange(absPath string, removed bool) []Event {
 	if info.IsDir() {
 		return c.addDirsLocked(rel)
 	}
-	if !info.Mode().IsRegular() || !IsHTML(info.Name()) {
+	if !info.Mode().IsRegular() || !IsEntry(info.Name()) {
 		return c.removeLocked(rel)
 	}
 

@@ -41,6 +41,38 @@ func setupWorkspace(t *testing.T) (root string, c *catalog.Catalog) {
 	return root, c
 }
 
+func TestScanIncludesMarkdown(t *testing.T) {
+	root := t.TempDir()
+	mustWrite := func(rel, body string) {
+		p := filepath.Join(root, rel)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	mustWrite("notes/a.html", "<html>a</html>")
+	mustWrite("notes/readme.md", "# readme")
+	mustWrite("notes/x.txt", "text")
+	mustWrite("notes/y.markdown", "# markdown")
+
+	m, err := ignore.New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := catalog.New(root, m)
+	if err := c.Scan(); err != nil {
+		t.Fatal(err)
+	}
+	if !c.Has("notes/a.html") || !c.Has("notes/readme.md") {
+		t.Fatal("expected html and md in catalog")
+	}
+	if c.Has("notes/x.txt") || c.Has("notes/y.markdown") {
+		t.Fatal("non-entry files should not be cataloged")
+	}
+}
+
 func TestScanAndSearch(t *testing.T) {
 	_, c := setupWorkspace(t)
 	if !c.Has("notes/a.html") || c.Has(".git/nope.html") {
