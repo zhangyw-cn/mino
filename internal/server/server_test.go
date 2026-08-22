@@ -578,10 +578,35 @@ func TestUIIndexServed(t *testing.T) {
 		`id="breadcrumb"`,
 		`class="activity-bar"`,
 		`>Search files</span>`,
+		`id="quick-open"`,
+		`/fuzzy.js`,
+		`class="search-wrap"`,
 	} {
 		if !strings.Contains(html, marker) {
 			t.Fatalf("index missing %q", marker)
 		}
+	}
+}
+
+func TestFuzzyJSServed(t *testing.T) {
+	_, ts, _ := newTestServer(t)
+	defer ts.Close()
+
+	res, err := http.Get(ts.URL + "/fuzzy.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := io.ReadAll(res.Body)
+	res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("status %d", res.StatusCode)
+	}
+	js := string(body)
+	if !strings.Contains(js, "MinoFuzzy") {
+		t.Fatal("fuzzy.js missing MinoFuzzy")
+	}
+	if !strings.Contains(js, "function filter") {
+		t.Fatal("fuzzy.js missing filter")
 	}
 }
 
