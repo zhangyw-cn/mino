@@ -108,6 +108,50 @@ func TestTreeSearchAndApps(t *testing.T) {
 	}
 }
 
+func TestMDVendorAssetsServed(t *testing.T) {
+	_, ts, _ := newTestServer(t)
+	defer ts.Close()
+
+	for _, path := range []string{
+		"/md/vendor/marked.min.js",
+		"/md/vendor/purify.min.js",
+		"/md/vendor/highlight.min.js",
+		"/md/vendor/katex.min.js",
+		"/md/vendor/mermaid.min.js",
+		"/md/vendor/katex.min.css",
+		"/md/viewer.css",
+		"/md/vendor/fonts/KaTeX_Main-Regular.woff2",
+	} {
+		res, err := http.Get(ts.URL + path)
+		if err != nil {
+			t.Fatalf("%s: %v", path, err)
+		}
+		body, err := io.ReadAll(res.Body)
+		res.Body.Close()
+		if err != nil {
+			t.Fatalf("%s: %v", path, err)
+		}
+		if res.StatusCode != http.StatusOK {
+			t.Fatalf("%s: status %d", path, res.StatusCode)
+		}
+		if len(body) == 0 {
+			t.Fatalf("%s: empty body", path)
+		}
+		if string(body) == "\n" {
+			t.Fatalf("%s: still the single-newline stub", path)
+		}
+		if path == "/md/vendor/katex.min.css" {
+			css := string(body)
+			if !strings.Contains(css, "url(/md/vendor/fonts/") {
+				t.Fatal("katex.min.css missing rewritten font URLs")
+			}
+			if strings.Contains(css, "url(fonts/") {
+				t.Fatal("katex.min.css still has relative font URLs")
+			}
+		}
+	}
+}
+
 func TestMarkdownAppsAndRaw(t *testing.T) {
 	_, ts, _ := newTestServer(t)
 	defer ts.Close()
