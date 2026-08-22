@@ -152,6 +152,30 @@ func TestMDVendorAssetsServed(t *testing.T) {
 	}
 }
 
+func TestViewerPipelineMarkers(t *testing.T) {
+	_, ts, _ := newTestServer(t)
+	defer ts.Close()
+
+	res, err := http.Get(ts.URL + "/md/viewer.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, err := io.ReadAll(res.Body)
+	res.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("status %d", res.StatusCode)
+	}
+	js := string(body)
+	for _, marker := range []string{"DOMPurify", "mermaid", "katex", "/api/raw/"} {
+		if !strings.Contains(js, marker) {
+			t.Fatalf("viewer.js missing %q", marker)
+		}
+	}
+}
+
 func TestMarkdownAppsAndRaw(t *testing.T) {
 	_, ts, _ := newTestServer(t)
 	defer ts.Close()
