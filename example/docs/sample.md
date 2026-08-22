@@ -40,7 +40,7 @@ Line-broken `\[` / `\]` is also display math:
 \sum_{n=1}^{N} n = \frac{N(N+1)}{2}
 \]
 
-A single-line `\[ E = mc^2 \]` is **not** treated as math after the Task 4 delimiter fix. Academic citations such as \[1\] stay literal text.
+A single-line `\[ E = mc^2 \]` is **not** treated as display math. Academic citations such as \[1\] stay literal text.
 
 ## Mermaid
 

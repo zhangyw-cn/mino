@@ -35,7 +35,7 @@
 
     let source;
     try {
-      const res = await fetch("/api/raw/" + encodePath(rel));
+      const res = await fetch("/api/raw/" + encodePath(rel), { cache: "no-store" });
       if (!res.ok) throw new Error("HTTP " + res.status);
       source = await res.text();
     } catch (e) {

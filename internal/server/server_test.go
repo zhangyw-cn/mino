@@ -175,6 +175,7 @@ func TestViewerPipelineMarkers(t *testing.T) {
 		"mermaid",
 		"katex",
 		"/api/raw/",
+		`cache: "no-store"`,
 		"MinoMDPreprocess",
 		`securityLevel: "strict"`,
 		"nodes: [node]",
@@ -241,6 +242,9 @@ func TestMarkdownAppsAndRaw(t *testing.T) {
 	}
 	if ct := res.Header.Get("Content-Type"); !strings.Contains(ct, "text/plain") {
 		t.Fatalf("Content-Type %q", ct)
+	}
+	if cc := res.Header.Get("Cache-Control"); cc != "no-store" {
+		t.Fatalf("Cache-Control %q, want no-store", cc)
 	}
 	if string(body) != "# Hello\n" {
 		t.Fatalf("raw body %q", body)
