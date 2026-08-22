@@ -26,6 +26,9 @@ func newTestServer(t *testing.T) (*server.Server, *httptest.Server, string) {
 	if err := os.WriteFile(filepath.Join(root, "notes", "a.html"), []byte("<h1>hi</h1>"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.WriteFile(filepath.Join(root, "notes", "readme.md"), []byte("# Hello\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	matcher, err := ignore.New(nil)
 	if err != nil {
 		t.Fatal(err)
@@ -102,6 +105,103 @@ func TestTreeSearchAndApps(t *testing.T) {
 	res.Body.Close()
 	if res.StatusCode != http.StatusNotFound {
 		t.Fatalf("status %d", res.StatusCode)
+	}
+}
+
+func TestMarkdownAppsAndRaw(t *testing.T) {
+	_, ts, _ := newTestServer(t)
+	defer ts.Close()
+
+	res, err := http.Get(ts.URL + "/apps/notes/readme.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := io.ReadAll(res.Body)
+	res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("status %d", res.StatusCode)
+	}
+	if ct := res.Header.Get("Content-Type"); !strings.Contains(ct, "text/html") {
+		t.Fatalf("Content-Type %q", ct)
+	}
+	html := string(body)
+	if !strings.Contains(html, `data-path="notes/readme.md"`) {
+		t.Fatalf("missing data-path: %s", body)
+	}
+	if !strings.Contains(html, "/md/viewer.js") {
+		t.Fatalf("missing viewer.js: %s", body)
+	}
+
+	res, err = http.Get(ts.URL + "/md/viewer.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("viewer.js status %d", res.StatusCode)
+	}
+
+	res, err = http.Get(ts.URL + "/md/vendor/marked.min.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("marked.min.js status %d", res.StatusCode)
+	}
+
+	res, err = http.Get(ts.URL + "/api/raw/notes/readme.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ = io.ReadAll(res.Body)
+	res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("status %d", res.StatusCode)
+	}
+	if ct := res.Header.Get("Content-Type"); !strings.Contains(ct, "text/plain") {
+		t.Fatalf("Content-Type %q", ct)
+	}
+	if string(body) != "# Hello\n" {
+		t.Fatalf("raw body %q", body)
+	}
+
+	res, err = http.Get(ts.URL + "/api/raw/notes/a.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusNotFound {
+		t.Fatalf("status %d", res.StatusCode)
+	}
+
+	res, err = http.Get(ts.URL + "/api/raw/../notes/readme.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusNotFound && res.StatusCode != http.StatusForbidden {
+		t.Fatalf("status %d", res.StatusCode)
+	}
+
+	res, err = http.Get(ts.URL + "/apps/notes/a.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ = io.ReadAll(res.Body)
+	res.Body.Close()
+	if !strings.Contains(string(body), "<h1>hi</h1>") {
+		t.Fatalf("%s", body)
+	}
+
+	res, err = http.Get(ts.URL + "/api/search?q=readme")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ = io.ReadAll(res.Body)
+	res.Body.Close()
+	if !strings.Contains(string(body), "notes/readme.md") {
+		t.Fatalf("%s", body)
 	}
 }
 

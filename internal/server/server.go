@@ -2,9 +2,12 @@ package server
 
 import (
 	"encoding/json"
+	"html/template"
+	"io"
 	"net"
 	"net/http"
 	"os"
+	"path"
 	"strings"
 	"sync"
 
@@ -16,10 +19,11 @@ import (
 var loopbackHosts = []string{"127.0.0.1", "localhost", "[::1]", "::1"}
 
 type Server struct {
-	root    string
-	cfgName string
-	cat     *catalog.Catalog
-	hub     *Hub
+	root     string
+	cfgName  string
+	cat      *catalog.Catalog
+	hub      *Hub
+	mdViewer *template.Template
 
 	mu           sync.RWMutex
 	watchEnabled bool
@@ -31,10 +35,11 @@ func New(root string, cfgName string, host string, cat *catalog.Catalog, hub *Hu
 		hub = NewHub()
 	}
 	s := &Server{
-		root:    root,
-		cfgName: cfgName,
-		cat:     cat,
-		hub:     hub,
+		root:     root,
+		cfgName:  cfgName,
+		cat:      cat,
+		hub:      hub,
+		mdViewer: template.Must(template.ParseFS(ui.FS, "md/viewer.html")),
 	}
 	s.SetConfiguredHost(host)
 	return s
@@ -84,7 +89,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/search", s.searchHandler)
 	mux.Handle("GET /api/events", s.hub)
 	mux.HandleFunc("GET /api/meta", s.metaHandler)
+	mux.HandleFunc("GET /api/raw/", s.rawHandler)
 	mux.HandleFunc("GET /apps/", s.appsHandler)
+	mux.HandleFunc("GET /md/", s.mdAssetHandler)
 	mux.HandleFunc("GET /app.js", embeddedAssetHandler("app.js", "text/javascript; charset=utf-8"))
 	mux.HandleFunc("GET /style.css", embeddedAssetHandler("style.css", "text/css; charset=utf-8"))
 	mux.HandleFunc("GET /{$}", s.indexHandler)
@@ -123,7 +130,52 @@ func (s *Server) metaHandler(w http.ResponseWriter, _ *http.Request) {
 func (s *Server) appsHandler(w http.ResponseWriter, r *http.Request) {
 	raw := strings.TrimPrefix(r.URL.Path, "/apps/")
 	rel, err := catalog.NormalizeRel(raw)
-	if err != nil || rel == "" || !catalog.IsHTML(rel) || !s.cat.Has(rel) {
+	if err != nil || rel == "" || !s.cat.Has(rel) {
+		http.NotFound(w, r)
+		return
+	}
+	switch {
+	case catalog.IsHTML(rel):
+		s.serveAppFile(w, r, rel)
+	case catalog.IsMarkdown(rel):
+		s.serveMarkdownViewer(w, rel)
+	default:
+		http.NotFound(w, r)
+	}
+}
+
+func (s *Server) serveAppFile(w http.ResponseWriter, r *http.Request, rel string) {
+	root, err := os.OpenRoot(s.root)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	defer root.Close()
+
+	file, err := root.Open(rel)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	defer file.Close()
+
+	info, err := file.Stat()
+	if err != nil || !info.Mode().IsRegular() {
+		http.NotFound(w, r)
+		return
+	}
+	http.ServeContent(w, r, rel, info.ModTime(), file)
+}
+
+func (s *Server) serveMarkdownViewer(w http.ResponseWriter, rel string) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_ = s.mdViewer.Execute(w, struct{ Path string }{Path: rel})
+}
+
+func (s *Server) rawHandler(w http.ResponseWriter, r *http.Request) {
+	raw := strings.TrimPrefix(r.URL.Path, "/api/raw/")
+	rel, err := catalog.NormalizeRel(raw)
+	if err != nil || rel == "" || !catalog.IsMarkdown(rel) || !s.cat.Has(rel) {
 		http.NotFound(w, r)
 		return
 	}
@@ -146,7 +198,50 @@ func (s *Server) appsHandler(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	http.ServeContent(w, r, rel, info.ModTime(), file)
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	_, _ = io.Copy(w, file)
+}
+
+func (s *Server) mdAssetHandler(w http.ResponseWriter, r *http.Request) {
+	name := strings.TrimPrefix(r.URL.Path, "/md/")
+	if name == "" {
+		http.NotFound(w, r)
+		return
+	}
+	cleaned := path.Clean("/" + name)
+	cleaned = strings.TrimPrefix(cleaned, "/")
+	if cleaned == "" || cleaned == "." {
+		http.NotFound(w, r)
+		return
+	}
+	data, err := ui.FS.ReadFile("md/" + cleaned)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	w.Header().Set("Content-Type", mdAssetContentType(cleaned))
+	_, _ = w.Write(data)
+}
+
+func mdAssetContentType(name string) string {
+	switch strings.ToLower(path.Ext(name)) {
+	case ".js":
+		return "text/javascript; charset=utf-8"
+	case ".css":
+		return "text/css; charset=utf-8"
+	case ".html":
+		return "text/html; charset=utf-8"
+	case ".woff2":
+		return "font/woff2"
+	case ".woff":
+		return "font/woff"
+	case ".ttf":
+		return "font/ttf"
+	case ".otf":
+		return "font/otf"
+	default:
+		return "application/octet-stream"
+	}
 }
 
 func (s *Server) indexHandler(w http.ResponseWriter, r *http.Request) {
