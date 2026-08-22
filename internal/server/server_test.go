@@ -627,6 +627,12 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 	if strings.Contains(js, "sidebar.hidden =") {
 		t.Fatal("app.js must not set sidebar.hidden (breaks workbench grid)")
 	}
+	if strings.Contains(js, "/api/search") {
+		t.Fatal("app.js must not call /api/search")
+	}
+	if strings.Contains(js, `key !== "f"`) || strings.Contains(js, `key !== 'f'`) {
+		t.Fatal("app.js must not intercept Ctrl/Cmd+F")
+	}
 	for _, marker := range []string{
 		"sidebar.inert",
 		"setBreadcrumb",
@@ -634,6 +640,12 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 		"preventDefault",
 		"event.altKey",
 		"event.shiftKey",
+		"MinoFuzzy",
+		"contentDocument",
+		"Type to search files",
+		"No matching files.",
+		`key === "e"`,
+		`key === "p"`,
 	} {
 		if !strings.Contains(js, marker) {
 			t.Fatalf("app.js missing contract %q", marker)
