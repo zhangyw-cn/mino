@@ -6,7 +6,7 @@
   const quickOpen = document.querySelector("#quick-open");
   const quickOpenInput = document.querySelector("#quick-open-input");
   const quickOpenList = document.querySelector("#quick-open-list");
-  const quickOpenFooter = document.querySelector("#quick-open-footer");
+  const quickOpenBackdrop = document.querySelector("#quick-open-backdrop");
   const tree = document.querySelector("#tree");
   const preview = document.querySelector("#preview");
   const breadcrumb = document.querySelector("#breadcrumb");
@@ -280,17 +280,18 @@
     if (open) {
       pickerOpen = true;
       quickOpen.hidden = false;
+      quickOpenBackdrop.hidden = false;
       commandCenter.setAttribute("aria-expanded", "true");
       quickOpenInput.setAttribute("aria-expanded", "true");
       return;
     }
     pickerOpen = false;
     quickOpen.hidden = true;
+    quickOpenBackdrop.hidden = true;
     commandCenter.setAttribute("aria-expanded", "false");
     quickOpenInput.setAttribute("aria-expanded", "false");
     quickOpenInput.value = "";
     quickOpenInput.removeAttribute("aria-activedescendant");
-    quickOpenFooter.hidden = true;
     activeIndex = -1;
     pickerRows = [];
     quickOpenList.replaceChildren();
@@ -303,7 +304,6 @@
     status.setAttribute("role", "presentation");
     status.textContent = message;
     quickOpenList.replaceChildren(status);
-    quickOpenFooter.hidden = true;
     pickerRows = [];
     activeIndex = -1;
     quickOpenInput.removeAttribute("aria-activedescendant");
@@ -325,7 +325,6 @@
   function renderPicker() {
     const query = quickOpenInput.value.trim();
     const previousPath = pickerRows[activeIndex]?.path;
-    const showingRecents = !query;
     if (!query) {
       if (!recents.length) {
         showPickerMessage("Type to search files");
@@ -379,7 +378,6 @@
       quickOpenList.append(item);
     });
 
-    quickOpenFooter.hidden = !showingRecents;
     const restored = previousPath
       ? pickerRows.findIndex((row) => row.path === previousPath)
       : -1;
@@ -420,12 +418,20 @@
   }
 
   function onQuickOpenHotkey(event) {
-    if (!isQuickOpenHotkey(event)) return;
-    event.preventDefault();
-    setPickerOpen(true);
-    renderPicker();
-    quickOpenInput.focus();
-    quickOpenInput.select();
+    if (isQuickOpenHotkey(event)) {
+      event.preventDefault();
+      setPickerOpen(true);
+      renderPicker();
+      quickOpenInput.focus();
+      quickOpenInput.select();
+      return;
+    }
+    if (!pickerOpen) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setPickerOpen(false);
+      commandCenter.focus();
+    }
   }
 
   function bindPreviewHotkeys() {
@@ -469,14 +475,12 @@
   });
 
   document.addEventListener("keydown", onQuickOpenHotkey, true);
-  document.addEventListener("keydown", (event) => {
-    if (!pickerOpen || event.key !== "Escape") return;
-    event.preventDefault();
-    setPickerOpen(false);
-    commandCenter.focus();
-  }, true);
   preview.addEventListener("load", bindPreviewHotkeys);
 
+  quickOpenBackdrop.addEventListener("pointerdown", () => {
+    if (!pickerOpen) return;
+    setPickerOpen(false);
+  });
   document.addEventListener("pointerdown", (event) => {
     if (!pickerOpen) return;
     if (quickOpen.contains(event.target) || commandCenter.contains(event.target)) return;

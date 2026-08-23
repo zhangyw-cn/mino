@@ -664,10 +664,18 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 		"quickOpenInput.blur()",
 		`key === "e"`,
 		`key === "p"`,
+		"quickOpenBackdrop",
+		`key === "Escape"`,
 	} {
 		if !strings.Contains(js, marker) {
 			t.Fatalf("app.js missing contract %q", marker)
 		}
+	}
+	if strings.Contains(js, "quickOpenFooter") {
+		t.Fatal("app.js must not reference quickOpenFooter")
+	}
+	if strings.Contains(js, "recently opened") {
+		t.Fatal("app.js must not include recently opened")
 	}
 
 	cssRes, err := http.Get(ts.URL + "/style.css")
