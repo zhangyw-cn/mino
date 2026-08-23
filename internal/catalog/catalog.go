@@ -9,7 +9,7 @@ import (
 	"strings"
 	"sync"
 
-	"mino/internal/ignore"
+	"github.com/zhangyw-cn/mino/internal/ignore"
 )
 
 type EventKind string

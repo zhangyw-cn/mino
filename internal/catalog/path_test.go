@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"testing"
 
-	"mino/internal/catalog"
+	"github.com/zhangyw-cn/mino/internal/catalog"
 )
 
 func TestIsHTML(t *testing.T) {

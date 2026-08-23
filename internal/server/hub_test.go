@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"mino/internal/catalog"
-	"mino/internal/server"
+	"github.com/zhangyw-cn/mino/internal/catalog"
+	"github.com/zhangyw-cn/mino/internal/server"
 )
 
 type flushRecorder struct {

@@ -8,7 +8,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 
-	"mino/internal/catalog"
+	"github.com/zhangyw-cn/mino/internal/catalog"
 )
 
 // Watcher keeps a catalog synchronized with filesystem changes.

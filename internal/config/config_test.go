@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"mino/internal/config"
+	"github.com/zhangyw-cn/mino/internal/config"
 )
 
 func TestLoadCreatesDefaultConfig(t *testing.T) {

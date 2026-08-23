@@ -3,7 +3,7 @@ package ignore_test
 import (
 	"testing"
 
-	"mino/internal/ignore"
+	"github.com/zhangyw-cn/mino/internal/ignore"
 )
 
 func TestBuiltinIgnores(t *testing.T) {

@@ -11,8 +11,8 @@ import (
 	"strings"
 	"sync"
 
-	"mino/internal/catalog"
-	"mino/internal/ui"
+	"github.com/zhangyw-cn/mino/internal/catalog"
+	"github.com/zhangyw-cn/mino/internal/ui"
 )
 
 // loopbackHosts are always accepted regardless of the configured listen host.

@@ -1,4 +1,4 @@
-module mino
+module github.com/zhangyw-cn/mino
 
 go 1.24.4
 

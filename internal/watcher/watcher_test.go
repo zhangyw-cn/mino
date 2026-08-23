@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"mino/internal/catalog"
-	"mino/internal/ignore"
-	"mino/internal/watcher"
+	"github.com/zhangyw-cn/mino/internal/catalog"
+	"github.com/zhangyw-cn/mino/internal/ignore"
+	"github.com/zhangyw-cn/mino/internal/watcher"
 )
 
 func TestWatcherDetectsNewHTML(t *testing.T) {

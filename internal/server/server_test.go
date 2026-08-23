@@ -11,9 +11,9 @@ import (
 	"strings"
 	"testing"
 
-	"mino/internal/catalog"
-	"mino/internal/ignore"
-	"mino/internal/server"
+	"github.com/zhangyw-cn/mino/internal/catalog"
+	"github.com/zhangyw-cn/mino/internal/ignore"
+	"github.com/zhangyw-cn/mino/internal/server"
 )
 
 func newTestServer(t *testing.T) (*server.Server, *httptest.Server, string) {

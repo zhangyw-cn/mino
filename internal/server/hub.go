@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"sync"
 
-	"mino/internal/catalog"
+	"github.com/zhangyw-cn/mino/internal/catalog"
 )
 
 type Hub struct {

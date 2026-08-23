@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"mino/internal/catalog"
-	"mino/internal/ignore"
+	"github.com/zhangyw-cn/mino/internal/catalog"
+	"github.com/zhangyw-cn/mino/internal/ignore"
 )
 
 func setupWorkspace(t *testing.T) (root string, c *catalog.Catalog) {
