@@ -293,9 +293,7 @@
     activeIndex = -1;
     pickerRows = [];
     quickOpenList.replaceChildren();
-    const restoreFocus = document.activeElement === quickOpenInput;
     quickOpenInput.blur();
-    if (restoreFocus) commandCenter.focus();
   }
 
   function showPickerMessage(message) {
@@ -449,7 +447,7 @@
   });
 
   quickOpenInput.addEventListener("input", () => {
-    if (!pickerOpen) setPickerOpen(true);
+    if (!pickerOpen) return;
     pickerRows = [];
     activeIndex = 0;
     renderPicker();
@@ -469,6 +467,7 @@
     } else if (event.key === "Escape") {
       event.preventDefault();
       setPickerOpen(false);
+      commandCenter.focus();
     }
   });
 
