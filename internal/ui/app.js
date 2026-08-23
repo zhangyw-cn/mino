@@ -70,7 +70,9 @@
       breadcrumb.dataset.empty = "true";
       return;
     }
-    breadcrumb.textContent = path.split("/").join(" / ");
+    const text = document.createElement("span");
+    text.textContent = path.split("/").join(" / ");
+    breadcrumb.replaceChildren(icon(fileIconName(path)), text);
     breadcrumb.dataset.empty = "false";
   }
 
@@ -192,21 +194,22 @@
     row.dataset.path = node.path;
     row.title = node.path || node.name;
 
-    const indicator = document.createElement("span");
-    indicator.className = node.type === "dir" ? "chevron" : "file-icon";
-    indicator.setAttribute("aria-hidden", "true");
-    indicator.textContent = node.type === "dir" ? "▶" : "◇";
-
     const label = document.createElement("span");
     label.className = "label";
     label.textContent = node.name;
-    row.append(indicator, label);
 
     if (node.type === "file") {
+      row.append(icon(fileIconName(node.path)), label);
       row.classList.toggle("selected", node.path === currentPath);
       row.addEventListener("click", () => openFile(node.path));
       return row;
     }
+
+    const chevron = document.createElement("span");
+    chevron.className = "chevron";
+    chevron.setAttribute("aria-hidden", "true");
+    chevron.textContent = "▶";
+    row.append(chevron, icon("folder"), icon("folder-open"), label);
 
     const children = document.createElement("ul");
     children.className = "tree-list";
@@ -258,7 +261,7 @@
       list.append(makeNode(node));
     }
     tree.replaceChildren(list);
-    if (!list.children.length) showMessage("No HTML files found.");
+    if (!list.children.length) showMessage("No HTML or Markdown files found.");
     markSelection();
   }
 

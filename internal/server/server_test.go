@@ -696,10 +696,19 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 		"ICON_PATHS",
 		"command-center-label",
 		`createElementNS`,
+		`icon("folder")`,
+		`icon("folder-open")`,
+		"No HTML or Markdown files found.",
 	} {
 		if !strings.Contains(js, marker) {
 			t.Fatalf("app.js missing contract %q", marker)
 		}
+	}
+	if strings.Contains(js, `"◇"`) || strings.Contains(js, "'◇'") {
+		t.Fatal("app.js must not use diamond file glyphs")
+	}
+	if strings.Contains(js, "No HTML files found.") {
+		t.Fatal("app.js must not use HTML-only empty tree copy")
 	}
 	if strings.Contains(js, "quickOpenFooter") {
 		t.Fatal("app.js must not reference quickOpenFooter")
