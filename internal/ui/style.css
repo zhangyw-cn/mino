@@ -168,6 +168,7 @@ body {
 .quick-open-chip.html { background: #e36e6e; }
 .quick-open-chip.md { background: #519aba; }
 .quick-open-name {
+  min-width: 0;
   overflow: hidden;
   color: var(--fg);
   font-size: 13px;
@@ -180,6 +181,7 @@ body {
   font-weight: 600;
 }
 .quick-open-dir {
+  min-width: 0;
   overflow: hidden;
   color: var(--fg-muted);
   margin-left: auto;

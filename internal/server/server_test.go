@@ -650,6 +650,7 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 		"recently opened",
 		"quick-open-input",
 		"command-center",
+		"quickOpenInput.blur()",
 		`key === "e"`,
 		`key === "p"`,
 	} {

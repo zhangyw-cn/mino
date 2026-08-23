@@ -293,6 +293,9 @@
     activeIndex = -1;
     pickerRows = [];
     quickOpenList.replaceChildren();
+    const restoreFocus = document.activeElement === quickOpenInput;
+    quickOpenInput.blur();
+    if (restoreFocus) commandCenter.focus();
   }
 
   function showPickerMessage(message) {
