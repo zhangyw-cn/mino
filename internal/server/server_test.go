@@ -599,6 +599,28 @@ func TestIndexHTMLHasIframeAndAppJS(t *testing.T) {
 	if strings.Contains(html, "recently opened") {
 		t.Fatal("index must not include recently opened footer")
 	}
+	for _, marker := range []string{
+		`data-icon="search"`,
+		`data-icon="explorer"`,
+		`data-icon="collapse"`,
+		`data-icon="empty"`,
+		`class="command-center-label"`,
+		`class="quick-open-input-wrap"`,
+		"Choose an HTML or Markdown file from the sidebar.",
+	} {
+		if !strings.Contains(html, marker) {
+			t.Fatalf("index missing %q", marker)
+		}
+	}
+	if strings.Contains(html, "☰") {
+		t.Fatal("index must not include hamburger glyph")
+	}
+	if strings.Contains(html, "◇") {
+		t.Fatal("index must not include diamond glyph")
+	}
+	if strings.Contains(html, "Choose an HTML file from the sidebar.") {
+		t.Fatal("index must not use HTML-only empty copy")
+	}
 }
 
 func TestFuzzyJSServed(t *testing.T) {
@@ -707,6 +729,10 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 		"z-index: 40",
 		"height: 24px",
 		"line-height: 22px",
+		".quick-open-input-wrap",
+		".command-center-label",
+		".icon-folder-open",
+		".breadcrumb",
 	} {
 		if !strings.Contains(css, marker) {
 			t.Fatalf("style.css missing contract %q", marker)
