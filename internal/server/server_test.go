@@ -606,6 +606,7 @@ func TestIndexHTMLHasIframeAndAppJS(t *testing.T) {
 		`data-icon="empty"`,
 		`class="command-center-label"`,
 		`class="quick-open-input-wrap"`,
+		`<label class="quick-open-input-wrap"`,
 		"Choose an HTML or Markdown file from the sidebar.",
 	} {
 		if !strings.Contains(html, marker) {
@@ -617,6 +618,9 @@ func TestIndexHTMLHasIframeAndAppJS(t *testing.T) {
 	}
 	if strings.Contains(html, "◇") {
 		t.Fatal("index must not include diamond glyph")
+	}
+	if strings.Contains(html, "⟨") {
+		t.Fatal("index must not include collapse chevron glyph")
 	}
 	if strings.Contains(html, "Choose an HTML file from the sidebar.") {
 		t.Fatal("index must not use HTML-only empty copy")
@@ -693,7 +697,9 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 		`doc.addEventListener("keydown", onQuickOpenHotkey`,
 		"fileIconName",
 		"fillIcons",
+		"fillIcons();",
 		"ICON_PATHS",
+		`lastIndexOf(".")`,
 		"command-center-label",
 		`createElementNS`,
 		`icon("folder")`,
@@ -726,6 +732,24 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 	if strings.Contains(js, "commandCenter.textContent") {
 		t.Fatal("app.js must not set commandCenter.textContent")
 	}
+	if strings.Contains(js, `"file-html": FILE_PATH,`) || strings.Contains(js, `"file-html": FILE_PATH}`) {
+		t.Fatal("html icon must not reuse the generic file path")
+	}
+	if strings.Contains(js, `"file-md": FILE_PATH,`) || strings.Contains(js, `"file-md": FILE_PATH}`) {
+		t.Fatal("markdown icon must not reuse the generic file path")
+	}
+	if !strings.Contains(js, `"file-html": FILE_PATH +`) {
+		t.Fatal("html icon must add a type mark to the file silhouette")
+	}
+	if !strings.Contains(js, `"file-md": FILE_PATH +`) {
+		t.Fatal("markdown icon must add a type mark to the file silhouette")
+	}
+	if !strings.Contains(js, `"file-html": "#e36e6e"`) {
+		t.Fatal("html icon must use the document-chip red")
+	}
+	if !strings.Contains(js, `"file-md": "#519aba"`) {
+		t.Fatal("markdown icon must use the document-chip blue")
+	}
 
 	cssRes, err := http.Get(ts.URL + "/style.css")
 	if err != nil {
@@ -754,6 +778,8 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 		"height: 24px",
 		"line-height: 22px",
 		".quick-open-input-wrap",
+		".quick-open-input-wrap [data-icon]",
+		"::-webkit-search-decoration",
 		".command-center-label",
 		".icon-folder-open",
 		".breadcrumb",

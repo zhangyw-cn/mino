@@ -146,19 +146,33 @@ body {
   padding: 0 8px;
   color: var(--fg-muted);
   border-bottom: 1px solid var(--border);
+  cursor: text;
+}
+.quick-open-input-wrap [data-icon] {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
 }
 .quick-open-input-wrap:focus-within {
   border-bottom-color: var(--accent);
   box-shadow: inset 0 0 0 1px var(--accent);
 }
 #quick-open-input {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
+  width: auto;
   padding: 4px 0;
   color: var(--fg);
   background: transparent;
   border: 0;
   outline: none;
   font: inherit;
+}
+#quick-open-input::-webkit-search-decoration,
+#quick-open-input::-webkit-search-cancel-button,
+#quick-open-input::-webkit-search-results-button,
+#quick-open-input::-webkit-search-results-decoration {
+  display: none;
 }
 #quick-open-input::placeholder { color: var(--fg-muted); }
 #quick-open-list {

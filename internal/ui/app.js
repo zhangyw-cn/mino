@@ -136,8 +136,8 @@
     folder: "M1.5 3h5l1.25 1.5H14.5v8.5H1.5z",
     "folder-open": "M1.5 3.5h4.75l1 1.25H14v1.5H2.25zm.25 3.75L3.25 14h10.25l1.75-6.75z",
     file: FILE_PATH,
-    "file-html": FILE_PATH,
-    "file-md": FILE_PATH,
+    "file-html": FILE_PATH + "M6.7 6.15 4.55 8.5 6.7 10.85 5.75 11.6 3.15 8.5 5.75 5.4zM9.3 6.15 10.25 5.4 12.85 8.5 10.25 11.6 9.3 10.85 11.45 8.5z",
+    "file-md": FILE_PATH + "M4.7 12.35V5.7h1.5l1.55 3.25 1.55-3.25h1.5v6.65H9.55V8.45L8.15 11.25h-.8L5.95 8.45v3.9z",
     search: "M7 2.25a4.75 4.75 0 1 1 0 9.5 4.75 4.75 0 0 1 0-9.5zm0 1.5a3.25 3.25 0 1 0 0 6.5 3.25 3.25 0 0 0 0-6.5zM10.2 10.2l3.3 3.3-.95.95-3.3-3.3z",
     explorer: "M3 2h7.5v1.5H4.5v8.5H3zm2.5 2.5h7.5V15h-7.5z",
     collapse: "M2 2.5h1.75v11H2zm9.5.75L6 8l5.5 4.75z",
@@ -152,6 +152,8 @@
   };
 
   function icon(name, options) {
+    const d = ICON_PATHS[name];
+    if (!d) return null;
     const size = options && options.size ? options.size : 16;
     const svg = document.createElementNS(SVG_NS, "svg");
     svg.setAttribute("viewBox", "0 0 16 16");
@@ -161,7 +163,7 @@
     svg.setAttribute("class", `icon icon-${name}`);
     svg.setAttribute("fill", ICON_FILLS[name] || "currentColor");
     const path = document.createElementNS(SVG_NS, "path");
-    path.setAttribute("d", ICON_PATHS[name]);
+    path.setAttribute("d", d);
     path.setAttribute("fill-rule", "evenodd");
     svg.append(path);
     return svg;
@@ -169,8 +171,10 @@
 
   function fileIconName(path) {
     const base = basename(path).toLowerCase();
-    if (base.endsWith(".md")) return "file-md";
-    if (base.endsWith(".html") || base.endsWith(".htm")) return "file-html";
+    const dot = base.lastIndexOf(".");
+    const ext = dot < 0 ? "" : base.slice(dot);
+    if (ext === ".md") return "file-md";
+    if (ext === ".html" || ext === ".htm") return "file-html";
     return "file";
   }
 
@@ -178,7 +182,8 @@
     const scope = root || document;
     scope.querySelectorAll("[data-icon]").forEach((slot) => {
       const size = Number(slot.dataset.iconSize) || 16;
-      slot.replaceChildren(icon(slot.dataset.icon, { size }));
+      const node = icon(slot.dataset.icon, { size });
+      if (node) slot.replaceChildren(node);
     });
   }
 
@@ -199,7 +204,10 @@
     label.textContent = node.name;
 
     if (node.type === "file") {
-      row.append(icon(fileIconName(node.path)), label);
+      const gutter = document.createElement("span");
+      gutter.className = "chevron";
+      gutter.setAttribute("aria-hidden", "true");
+      row.append(gutter, icon(fileIconName(node.path)), label);
       row.classList.toggle("selected", node.path === currentPath);
       row.addEventListener("click", () => openFile(node.path));
       return row;
