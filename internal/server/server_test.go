@@ -599,6 +599,28 @@ func TestIndexHTMLHasIframeAndAppJS(t *testing.T) {
 	if strings.Contains(html, "recently opened") {
 		t.Fatal("index must not include recently opened footer")
 	}
+	for _, marker := range []string{
+		`data-icon="search"`,
+		`data-icon="explorer"`,
+		`data-icon="collapse"`,
+		`data-icon="empty"`,
+		`class="command-center-label"`,
+		`class="quick-open-input-wrap"`,
+		"Choose an HTML or Markdown file from the sidebar.",
+	} {
+		if !strings.Contains(html, marker) {
+			t.Fatalf("index missing %q", marker)
+		}
+	}
+	if strings.Contains(html, "☰") {
+		t.Fatal("index must not include hamburger glyph")
+	}
+	if strings.Contains(html, "◇") {
+		t.Fatal("index must not include diamond glyph")
+	}
+	if strings.Contains(html, "Choose an HTML file from the sidebar.") {
+		t.Fatal("index must not use HTML-only empty copy")
+	}
 }
 
 func TestFuzzyJSServed(t *testing.T) {
@@ -669,16 +691,40 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 		`quickOpenBackdrop.addEventListener("pointerdown"`,
 		"setPointerCapture",
 		`doc.addEventListener("keydown", onQuickOpenHotkey`,
+		"fileIconName",
+		"fillIcons",
+		"ICON_PATHS",
+		"command-center-label",
+		`createElementNS`,
+		`icon("folder")`,
+		`icon("folder-open")`,
+		"No HTML or Markdown files found.",
+		"quick-open-icon",
 	} {
 		if !strings.Contains(js, marker) {
 			t.Fatalf("app.js missing contract %q", marker)
 		}
+	}
+	if strings.Contains(js, `"◇"`) || strings.Contains(js, "'◇'") {
+		t.Fatal("app.js must not use diamond file glyphs")
+	}
+	if strings.Contains(js, "No HTML files found.") {
+		t.Fatal("app.js must not use HTML-only empty tree copy")
+	}
+	if strings.Contains(js, "fileChipClass") {
+		t.Fatal("app.js must not use fileChipClass")
+	}
+	if strings.Contains(js, "quick-open-chip") {
+		t.Fatal("app.js must not use quick-open-chip")
 	}
 	if strings.Contains(js, "quickOpenFooter") {
 		t.Fatal("app.js must not reference quickOpenFooter")
 	}
 	if strings.Contains(js, "recently opened") {
 		t.Fatal("app.js must not include recently opened")
+	}
+	if strings.Contains(js, "commandCenter.textContent") {
+		t.Fatal("app.js must not set commandCenter.textContent")
 	}
 
 	cssRes, err := http.Get(ts.URL + "/style.css")
@@ -699,7 +745,7 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 		"position: fixed",
 		"#37373d",
 		"#4fc1ff",
-		".quick-open-chip",
+		".quick-open-icon",
 		"#quick-open-backdrop",
 		"inset: 0",
 		"min(600px, 70vw)",
@@ -707,9 +753,16 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 		"z-index: 40",
 		"height: 24px",
 		"line-height: 22px",
+		".quick-open-input-wrap",
+		".command-center-label",
+		".icon-folder-open",
+		".breadcrumb",
 	} {
 		if !strings.Contains(css, marker) {
 			t.Fatalf("style.css missing contract %q", marker)
 		}
+	}
+	if strings.Contains(css, ".quick-open-chip") {
+		t.Fatal("style.css must not include .quick-open-chip")
 	}
 }

@@ -70,7 +70,9 @@
       breadcrumb.dataset.empty = "true";
       return;
     }
-    breadcrumb.textContent = path.split("/").join(" / ");
+    const text = document.createElement("span");
+    text.textContent = path.split("/").join(" / ");
+    breadcrumb.replaceChildren(icon(fileIconName(path)), text);
     breadcrumb.dataset.empty = "false";
   }
 
@@ -128,6 +130,58 @@
     return slash < 0 ? path : path.slice(slash + 1);
   }
 
+  const SVG_NS = "http://www.w3.org/2000/svg";
+  const FILE_PATH = "M3.5 1.5h6.25L13 4.75V14.5H3.5z";
+  const ICON_PATHS = {
+    folder: "M1.5 3h5l1.25 1.5H14.5v8.5H1.5z",
+    "folder-open": "M1.5 3.5h4.75l1 1.25H14v1.5H2.25zm.25 3.75L3.25 14h10.25l1.75-6.75z",
+    file: FILE_PATH,
+    "file-html": FILE_PATH,
+    "file-md": FILE_PATH,
+    search: "M7 2.25a4.75 4.75 0 1 1 0 9.5 4.75 4.75 0 0 1 0-9.5zm0 1.5a3.25 3.25 0 1 0 0 6.5 3.25 3.25 0 0 0 0-6.5zM10.2 10.2l3.3 3.3-.95.95-3.3-3.3z",
+    explorer: "M3 2h7.5v1.5H4.5v8.5H3zm2.5 2.5h7.5V15h-7.5z",
+    collapse: "M2 2.5h1.75v11H2zm9.5.75L6 8l5.5 4.75z",
+    empty: FILE_PATH,
+  };
+  const ICON_FILLS = {
+    folder: "#dcb67a",
+    "folder-open": "#dcb67a",
+    file: "#6e6e6e",
+    "file-html": "#e36e6e",
+    "file-md": "#519aba",
+  };
+
+  function icon(name, options) {
+    const size = options && options.size ? options.size : 16;
+    const svg = document.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("viewBox", "0 0 16 16");
+    svg.setAttribute("width", String(size));
+    svg.setAttribute("height", String(size));
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("class", `icon icon-${name}`);
+    svg.setAttribute("fill", ICON_FILLS[name] || "currentColor");
+    const path = document.createElementNS(SVG_NS, "path");
+    path.setAttribute("d", ICON_PATHS[name]);
+    path.setAttribute("fill-rule", "evenodd");
+    svg.append(path);
+    return svg;
+  }
+
+  function fileIconName(path) {
+    const base = basename(path).toLowerCase();
+    if (base.endsWith(".md")) return "file-md";
+    if (base.endsWith(".html") || base.endsWith(".htm")) return "file-html";
+    return "file";
+  }
+
+  function fillIcons(root) {
+    const scope = root || document;
+    scope.querySelectorAll("[data-icon]").forEach((slot) => {
+      const size = Number(slot.dataset.iconSize) || 16;
+      slot.replaceChildren(icon(slot.dataset.icon, { size }));
+    });
+  }
+
   function parentDir(path) {
     const slash = path.lastIndexOf("/");
     return slash < 0 ? "" : path.slice(0, slash + 1);
@@ -140,21 +194,22 @@
     row.dataset.path = node.path;
     row.title = node.path || node.name;
 
-    const indicator = document.createElement("span");
-    indicator.className = node.type === "dir" ? "chevron" : "file-icon";
-    indicator.setAttribute("aria-hidden", "true");
-    indicator.textContent = node.type === "dir" ? "▶" : "◇";
-
     const label = document.createElement("span");
     label.className = "label";
     label.textContent = node.name;
-    row.append(indicator, label);
 
     if (node.type === "file") {
+      row.append(icon(fileIconName(node.path)), label);
       row.classList.toggle("selected", node.path === currentPath);
       row.addEventListener("click", () => openFile(node.path));
       return row;
     }
+
+    const chevron = document.createElement("span");
+    chevron.className = "chevron";
+    chevron.setAttribute("aria-hidden", "true");
+    chevron.textContent = "▶";
+    row.append(chevron, icon("folder"), icon("folder-open"), label);
 
     const children = document.createElement("ul");
     children.className = "tree-list";
@@ -206,7 +261,7 @@
       list.append(makeNode(node));
     }
     tree.replaceChildren(list);
-    if (!list.children.length) showMessage("No HTML files found.");
+    if (!list.children.length) showMessage("No HTML or Markdown files found.");
     markSelection();
   }
 
@@ -237,7 +292,8 @@
       const meta = await response.json();
       const name = meta.name || "mino";
       title.textContent = name;
-      commandCenter.textContent = name;
+      const label = commandCenter.querySelector(".command-center-label");
+      if (label) label.textContent = name;
       commandCenter.title = name;
       document.title = `${name} · mino`;
       watchBanner.hidden = Boolean(meta.watchEnabled);
@@ -267,13 +323,6 @@
         i = j;
       }
     }
-  }
-
-  function fileChipClass(path) {
-    const base = basename(path).toLowerCase();
-    if (base.endsWith(".md")) return "quick-open-chip md";
-    if (base.endsWith(".html") || base.endsWith(".htm")) return "quick-open-chip html";
-    return "quick-open-chip";
   }
 
   function setPickerOpen(open, deferBackdrop) {
@@ -350,9 +399,8 @@
       button.tabIndex = -1;
       button.dataset.path = row.path;
 
-      const chip = document.createElement("span");
-      chip.className = fileChipClass(row.path);
-      chip.setAttribute("aria-hidden", "true");
+      const typeIcon = icon(fileIconName(row.path));
+      typeIcon.classList.add("quick-open-icon");
 
       const name = document.createElement("span");
       name.className = "quick-open-name";
@@ -360,7 +408,7 @@
       const baseOffset = row.path.length - base.length;
       appendHighlighted(name, base, row.matches, baseOffset);
 
-      button.append(chip, name);
+      button.append(typeIcon, name);
       const parent = parentDir(row.path);
       if (parent) {
         const dir = document.createElement("span");
@@ -527,6 +575,7 @@
     });
   }
 
+  fillIcons();
   setSidebarCollapsed(false);
   loadMeta();
   loadTree();

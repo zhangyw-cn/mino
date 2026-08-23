@@ -20,23 +20,29 @@
         aria-haspopup="dialog"
         aria-expanded="false"
         aria-controls="quick-open"
-      >mino</button>
+      >
+        <span data-icon="search" data-icon-size="14" aria-hidden="true"></span>
+        <span class="command-center-label">mino</span>
+      </button>
     </div>
   </header>
 
   <div id="quick-open-backdrop" hidden aria-hidden="true"></div>
 
   <div id="quick-open" role="dialog" aria-label="Quick Open" hidden>
-    <input
-      id="quick-open-input"
-      type="search"
-      placeholder="Search files by name"
-      autocomplete="off"
-      role="combobox"
-      aria-autocomplete="list"
-      aria-expanded="false"
-      aria-controls="quick-open-list"
-    >
+    <div class="quick-open-input-wrap">
+      <span data-icon="search" data-icon-size="14" aria-hidden="true"></span>
+      <input
+        id="quick-open-input"
+        type="search"
+        placeholder="Search files by name"
+        autocomplete="off"
+        role="combobox"
+        aria-autocomplete="list"
+        aria-expanded="false"
+        aria-controls="quick-open-list"
+      >
+    </div>
     <ul id="quick-open-list" role="listbox"></ul>
   </div>
 
@@ -55,7 +61,7 @@
         aria-expanded="true"
         title="Explorer"
       >
-        <span aria-hidden="true">☰</span>
+        <span data-icon="explorer" data-icon-size="24" aria-hidden="true"></span>
       </button>
     </nav>
 
@@ -69,7 +75,7 @@
           aria-label="Collapse explorer"
           title="Collapse explorer"
         >
-          <span aria-hidden="true">⟨</span>
+          <span data-icon="collapse" data-icon-size="16" aria-hidden="true"></span>
         </button>
       </div>
       <nav id="tree" class="tree">
@@ -82,9 +88,9 @@
         <div id="breadcrumb" class="breadcrumb">No file selected</div>
       </div>
       <div id="empty-state" class="empty-state">
-        <div class="empty-icon" aria-hidden="true">◇</div>
+        <div class="empty-icon" data-icon="empty" data-icon-size="34" aria-hidden="true"></div>
         <strong>No preview selected</strong>
-        <span>Choose an HTML file from the sidebar.</span>
+        <span>Choose an HTML or Markdown file from the sidebar.</span>
       </div>
       <iframe id="preview" title="Application preview" hidden></iframe>
     </section>
