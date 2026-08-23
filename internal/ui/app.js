@@ -276,7 +276,7 @@
     return "quick-open-chip";
   }
 
-  function setPickerOpen(open) {
+  function setPickerOpen(open, deferBackdrop) {
     if (open) {
       pickerOpen = true;
       quickOpen.hidden = false;
@@ -287,7 +287,7 @@
     }
     pickerOpen = false;
     quickOpen.hidden = true;
-    quickOpenBackdrop.hidden = true;
+    if (!deferBackdrop) quickOpenBackdrop.hidden = true;
     commandCenter.setAttribute("aria-expanded", "false");
     quickOpenInput.setAttribute("aria-expanded", "false");
     quickOpenInput.value = "";
@@ -477,13 +477,30 @@
   document.addEventListener("keydown", onQuickOpenHotkey, true);
   preview.addEventListener("load", bindPreviewHotkeys);
 
-  quickOpenBackdrop.addEventListener("pointerdown", () => {
+  function hideBackdrop(event) {
+    if (event && quickOpenBackdrop.hasPointerCapture(event.pointerId)) {
+      quickOpenBackdrop.releasePointerCapture(event.pointerId);
+    }
+    quickOpenBackdrop.hidden = true;
+  }
+
+  quickOpenBackdrop.addEventListener("pointerdown", (event) => {
     if (!pickerOpen) return;
-    setPickerOpen(false);
+    event.stopPropagation();
+    quickOpenBackdrop.setPointerCapture(event.pointerId);
+    setPickerOpen(false, true);
+  });
+  quickOpenBackdrop.addEventListener("pointerup", hideBackdrop);
+  quickOpenBackdrop.addEventListener("pointercancel", hideBackdrop);
+  quickOpenBackdrop.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    hideBackdrop();
   });
   document.addEventListener("pointerdown", (event) => {
     if (!pickerOpen) return;
     if (quickOpen.contains(event.target) || commandCenter.contains(event.target)) return;
+    if (event.target === quickOpenBackdrop) return;
     setPickerOpen(false);
   });
   document.addEventListener("focusin", (event) => {

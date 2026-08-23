@@ -666,6 +666,9 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 		`key === "p"`,
 		"quickOpenBackdrop",
 		`key === "Escape"`,
+		`quickOpenBackdrop.addEventListener("pointerdown"`,
+		"setPointerCapture",
+		`doc.addEventListener("keydown", onQuickOpenHotkey`,
 	} {
 		if !strings.Contains(js, marker) {
 			t.Fatalf("app.js missing contract %q", marker)
@@ -701,6 +704,8 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 		"inset: 0",
 		"min(600px, 70vw)",
 		"min-height: 22px",
+		"z-index: 40",
+		"height: 24px",
 	} {
 		if !strings.Contains(css, marker) {
 			t.Fatalf("style.css missing contract %q", marker)
