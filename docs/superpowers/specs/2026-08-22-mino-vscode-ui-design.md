@@ -76,7 +76,7 @@ CSS custom properties on `:root` (names illustrative; implement consistently):
 1. **Collapse:** Activity bar Files **or** Explorer collapse control hides the sidebar for the current session only (in-memory). Re-click Files to expand.
 2. **Tree:** Keep expand/collapse directories and file open behavior; restyle hover/selected states.
 3. **Breadcrumb:** Render `segment / segment / file.html` from the selected relative path; not clickable.
-4. **Search:** Unchanged filtering; `Ctrl/Cmd+F` focuses the search input (do not open the browser find dialog for the shell chrome).
+4. **Search:** Superseded by Quick Open (`2026-08-23-mino-quick-open-design.md`): `Ctrl/Cmd+E` and `Ctrl/Cmd+P` open the overlay; do not intercept `Ctrl/Cmd+F`.
 5. **Empty preview:** Existing empty-state message with dark-theme colors; breadcrumb shows “No file selected”.
 
 ## Architecture / file impact

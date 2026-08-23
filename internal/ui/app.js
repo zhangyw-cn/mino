@@ -128,7 +128,7 @@
 
   function parentDir(path) {
     const slash = path.lastIndexOf("/");
-    return slash < 0 ? "" : path.slice(0, slash);
+    return slash < 0 ? "" : path.slice(0, slash + 1);
   }
 
   function makeRow(node) {
@@ -218,6 +218,7 @@
       if (isStaleListingRequest(requestId)) return;
       lastTree = root;
       fileIndex = flattenFiles(root, []);
+      recents = recents.filter((path) => fileIndex.includes(path));
       renderTreeFromCache();
       if (pickerOpen) renderPicker();
     } catch (error) {
@@ -283,6 +284,7 @@
   function showPickerMessage(message) {
     const status = document.createElement("li");
     status.className = "quick-open-empty";
+    status.setAttribute("role", "presentation");
     status.textContent = message;
     quickOpen.replaceChildren(status);
     pickerRows = [];
@@ -344,6 +346,10 @@
       button.append(name);
       if (parent) button.append(dir);
       button.addEventListener("mousedown", (event) => event.preventDefault());
+      button.addEventListener("pointerenter", () => {
+        activeIndex = index;
+        markPickerActive();
+      });
       button.addEventListener("click", () => acceptPath(row.path));
       item.append(button);
       quickOpen.append(item);
@@ -414,6 +420,12 @@
     setPickerOpen(true);
     renderPicker();
   });
+  searchWrap.querySelector(".search-box").addEventListener("pointerdown", () => {
+    search.focus();
+    if (pickerOpen) return;
+    setPickerOpen(true);
+    renderPicker();
+  });
   search.addEventListener("input", () => {
     if (!pickerOpen) setPickerOpen(true);
     pickerRows = [];
@@ -446,6 +458,7 @@
     if (!pickerOpen) return;
     if (searchWrap.contains(event.target)) return;
     setPickerOpen(false);
+    search.blur();
   });
   document.addEventListener("focusin", (event) => {
     if (!pickerOpen) return;

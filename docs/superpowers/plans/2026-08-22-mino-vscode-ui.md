@@ -4,7 +4,7 @@
 
 **Goal:** Restyle Mino’s embedded browser UI into a VS Code Dark Modern–like workbench (activity bar, collapsible Explorer, display-only breadcrumb) without changing backend APIs.
 
-**Architecture:** Keep the existing `embed.FS` UI (`internal/ui/{index.html,style.css,app.js}`). Restructure markup for a workbench shell, replace light-theme CSS with Dark Modern tokens + grid layout, and add minimal JS for sidebar collapse, breadcrumb rendering, and `Ctrl/Cmd+F` search focus. Server routes and catalog/SSE behavior stay unchanged.
+**Architecture:** Keep the existing `embed.FS` UI (`internal/ui/{index.html,style.css,app.js}`). Restructure markup for a workbench shell, replace light-theme CSS with Dark Modern tokens + grid layout, and add minimal JS for sidebar collapse and breadcrumb rendering. Search hotkeys were later superseded by Quick Open (`2026-08-23-mino-quick-open-design.md`). Server routes and catalog/SSE behavior stay unchanged.
 
 **Tech Stack:** Vanilla HTML/CSS/JS embedded in Go; verification via `go test` structural markers + manual browser checks.
 
@@ -16,7 +16,7 @@
 - Dark theme only; no status bar; no tabs; breadcrumb not clickable; sidebar collapse is session-only (in-memory).
 - Empty breadcrumb copy: `No file selected` (replace previous `Select a file to preview` in the path chrome).
 - Activity bar has a single Files control that toggles the sidebar; Explorer heading includes a collapse control.
-- Search stays top-bar center; `Ctrl/Cmd+F` focuses `#search` and must `preventDefault` so the browser find UI does not steal focus from the shell.
+- Search stays top-bar center. Superseded by Quick Open: `Ctrl/Cmd+E`/`P` open the overlay; do not intercept `Ctrl/Cmd+F` (see `docs/superpowers/specs/2026-08-23-mino-quick-open-design.md`).
 
 ---
 

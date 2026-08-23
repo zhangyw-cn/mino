@@ -36,6 +36,7 @@ body {
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   column-gap: 16px;
+  z-index: 10;
   background: var(--bg-shell);
   border-bottom: 1px solid var(--border);
 }
@@ -83,6 +84,7 @@ body {
   background: var(--search-bg);
   border: 1px solid #3c3c3c;
   border-radius: 5px;
+  cursor: text;
 }
 .search-box:focus-within {
   border-color: var(--accent);
@@ -136,7 +138,6 @@ body {
   font: inherit;
   text-align: left;
 }
-.quick-open-item:hover,
 .quick-open-item.active {
   background: var(--selection);
 }

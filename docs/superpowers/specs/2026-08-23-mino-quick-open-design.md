@@ -78,8 +78,8 @@ Keep `#search` in the top bar. Add a sibling list `#quick-open` (combobox / list
 Each row:
 
 - Primary line: file basename, with matched characters highlighted
-- Secondary line: parent directory (`tools`, `docs/nested`); empty for workspace-root files
-- Highlight ranges are computed on the full relative path, then split: indexes in the basename go on the primary line; indexes in the directory prefix go on the secondary line
+- Secondary line: parent directory including the slash before the basename (`tools/`, `docs/nested/`); empty for workspace-root files
+- Highlight ranges are computed on the full relative path, then split: indexes in the basename go on the primary line; indexes in the directory prefix (including the separating `/`) go on the secondary line
 
 Show at most **50** rows (highest score). Overflow scrolls inside the list.
 
