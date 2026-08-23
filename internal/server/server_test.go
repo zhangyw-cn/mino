@@ -691,6 +691,11 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 		`quickOpenBackdrop.addEventListener("pointerdown"`,
 		"setPointerCapture",
 		`doc.addEventListener("keydown", onQuickOpenHotkey`,
+		"fileIconName",
+		"fillIcons",
+		"ICON_PATHS",
+		"command-center-label",
+		`createElementNS`,
 	} {
 		if !strings.Contains(js, marker) {
 			t.Fatalf("app.js missing contract %q", marker)
@@ -701,6 +706,9 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 	}
 	if strings.Contains(js, "recently opened") {
 		t.Fatal("app.js must not include recently opened")
+	}
+	if strings.Contains(js, "commandCenter.textContent") {
+		t.Fatal("app.js must not set commandCenter.textContent")
 	}
 
 	cssRes, err := http.Get(ts.URL + "/style.css")
