@@ -85,7 +85,9 @@ body {
   border: 1px solid #3c3c3c;
   border-radius: 5px;
   cursor: pointer;
-  font: inherit;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 22px;
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;

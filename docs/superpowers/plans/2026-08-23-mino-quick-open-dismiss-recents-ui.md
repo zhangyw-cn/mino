@@ -50,7 +50,7 @@ Do not modify catalog, watcher, config, embed.go, server routes, `fuzzy.js`, `/a
 - Consumes: nothing from later tasks
 - Produces: `#quick-open-backdrop` in the index HTML (`hidden`, `aria-hidden="true"`), sibling of `#quick-open`. No `#quick-open-footer`. CSS: backdrop `position: fixed; inset: 0; z-index: 40; background: transparent`. `.search-wrap` and `#quick-open` width `min(600px, 70vw)`. `#command-center` height `24px`. `.quick-open-item` `min-height: 22px; padding: 1px 8px; gap: 6px`. Input padding `4px 8px`. Empty-row padding `4px 8px`.
 
-- [ ] **Step 1: Write the failing HTML/CSS contract tests**
+- [x] **Step 1: Write the failing HTML/CSS contract tests**
 
 In `TestIndexHTMLHasIframeAndAppJS`, replace the marker list and add forbidden-footer checks. The `for _, marker := range []string{` block that currently includes `id="quick-open-footer"` and `recently opened` becomes:
 
@@ -113,7 +113,7 @@ In `TestAppJSWorkbenchContracts`, extend the CSS marker list (keep existing entr
 
 Leave the `app.js` marker loop in this test unchanged until Task 2.
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run:
 
@@ -123,7 +123,7 @@ go test ./internal/server/ -run 'TestIndexHTMLHasIframeAndAppJS|TestAppJSWorkben
 
 Expected: FAIL. `TestIndexHTMLHasIframeAndAppJS` missing `id="quick-open-backdrop"` and/or still containing `#quick-open-footer` / `recently opened`. `TestAppJSWorkbenchContracts` missing CSS `#quick-open-backdrop`, `inset: 0`, `min(600px, 70vw)`, or `min-height: 22px`.
 
-- [ ] **Step 3: Add backdrop markup and remove the footer**
+- [x] **Step 3: Add backdrop markup and remove the footer**
 
 In `internal/ui/index.html`, insert the backdrop immediately before `#quick-open`, and delete the footer node. The block from the Command Center close through the overlay becomes:
 
@@ -150,7 +150,7 @@ In `internal/ui/index.html`, insert the backdrop immediately before `#quick-open
 
 Do not leave `id="quick-open-footer"` or the text `recently opened` anywhere in this file.
 
-- [ ] **Step 4: Apply shared width, 24px Command Center, 22px rows, and backdrop CSS**
+- [x] **Step 4: Apply shared width, 24px Command Center, 22px rows, and backdrop CSS**
 
 In `internal/ui/style.css`, replace the `.search-wrap` through `#quick-open-footer[hidden]` block with:
 
@@ -293,7 +293,7 @@ In `internal/ui/style.css`, replace the `.search-wrap` through `#quick-open-foot
 
 Delete `#quick-open-footer` and `#quick-open-footer[hidden]` rules entirely. Keep `.banner {` immediately after the dir mark rules.
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
 
 Run:
 
@@ -303,7 +303,7 @@ go test ./internal/server/ -run 'TestIndexHTMLHasIframeAndAppJS|TestAppJSWorkben
 
 Expected: PASS. (`TestAppJSWorkbenchContracts` still checks current `app.js` markers; footer JS is still present until Task 2, and that is OK because Task 2 has not yet forbidden `quickOpenFooter`.)
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add internal/server/server_test.go internal/ui/index.html internal/ui/style.css
@@ -326,7 +326,7 @@ EOF
 - Consumes: `#quick-open-backdrop` from Task 1
 - Produces: `setPickerOpen` shows/hides `quickOpenBackdrop` with the overlay. Backdrop `pointerdown` calls `setPickerOpen(false)` and does not focus `#command-center`. `onQuickOpenHotkey` handles `Ctrl/Cmd+E`/`P` and, when `pickerOpen`, `Escape` (`event.key === "Escape"`): close and focus `#command-center`. Same handler is bound on `document` and `preview.contentDocument` (capture). No `quickOpenFooter` / `recently opened`. Empty-query recents still render as `.quick-open-item` rows.
 
-- [ ] **Step 1: Write the failing app.js contract tests**
+- [x] **Step 1: Write the failing app.js contract tests**
 
 In `TestAppJSWorkbenchContracts`, replace the JS marker loop with:
 
@@ -364,7 +364,7 @@ In `TestAppJSWorkbenchContracts`, replace the JS marker loop with:
 	}
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run:
 
@@ -374,7 +374,7 @@ go test ./internal/server/ -run TestAppJSWorkbenchContracts -count=1
 
 Expected: FAIL, missing `quickOpenBackdrop` and/or `key === "Escape"`, and/or still containing `quickOpenFooter`.
 
-- [ ] **Step 3: Wire backdrop, Escape, and drop footer in app.js**
+- [x] **Step 3: Wire backdrop, Escape, and drop footer in app.js**
 
 Replace the element queries at the top of the IIFE so `quickOpenFooter` is gone and the backdrop is selected:
 
@@ -491,7 +491,7 @@ Add backdrop dismiss **before** the existing document `pointerdown` listener. Do
 
 Grep `internal/ui/app.js` for `quickOpenFooter` and `recently opened` — both must be gone.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run:
 
@@ -503,7 +503,7 @@ go test ./internal/catalog/ ./internal/server/ -count=1
 
 Expected: all PASS. Fuzzy Node tests unchanged and still passing. `/api/search` tests still substring-based.
 
-- [ ] **Step 5: Manual check**
+- [x] **Step 5: Manual check**
 
 Run `go run ./cmd/mino ./example`, open the printed URL, then:
 
@@ -515,7 +515,7 @@ Run `go run ./cmd/mino ./example`, open the printed URL, then:
 6. Empty query after opening a file lists recents with no `recently opened` footer. Reload clears recents.
 7. Rows look ~22px; Command Center is 24px tall and matches overlay width.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add internal/server/server_test.go internal/ui/app.js

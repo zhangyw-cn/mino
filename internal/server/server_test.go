@@ -706,6 +706,7 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 		"min-height: 22px",
 		"z-index: 40",
 		"height: 24px",
+		"line-height: 22px",
 	} {
 		if !strings.Contains(css, marker) {
 			t.Fatalf("style.css missing contract %q", marker)

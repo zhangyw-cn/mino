@@ -86,7 +86,7 @@ The backdrop covers the top bar, Explorer, preview iframe, and empty state. It d
 
 VS Code’s Command Center and the Quick Input that covers it are the **same width**. Apply one width to both `.search-wrap` and `#quick-open`: `min(600px, 70vw)`. Both stay horizontally centered (`#quick-open` keeps `left: 50%; transform: translateX(-50%)`). Overlay `top: 4px` still covers the 35px top bar center.
 
-`#command-center` height: **24px** (from 26px), so it sits in the 35px top bar like VS Code’s command-center pill. No `▾`, no Copilot icon.
+`#command-center` height: **24px** (from 26px), font-size **13px**, line-height **22px**, so it sits in the 35px top bar like VS Code’s command-center pill. No `▾`, no Copilot icon.
 
 ### Overlay chrome
 
@@ -102,6 +102,7 @@ File rows stay: type chip, basename (match marks `#4fc1ff`), parent path on the 
 |---------|------|----|
 | `.search-wrap` / `#quick-open` width | `min(420px, 46vw)` / `min(640px, 86vw)` | **both** `min(600px, 70vw)` |
 | `#command-center` height | 26px | 24px |
+| `#command-center` font | `font: inherit` (~16px) | **13px** / `line-height: 22px` |
 | `.quick-open-item` `min-height` | 36px | **22px** |
 | `.quick-open-item` padding | 8px 14px | 1px 8px |
 | `#quick-open-input` padding | 10px 14px | 4px 8px |
@@ -185,7 +186,7 @@ No Playwright. Follow existing UI contract tests. Do not change `MinoFuzzy` Node
 1. Clicking the preview while Quick Open is open closes it without delivering that click to the iframe.
 2. `Escape` closes Quick Open from the shell and from the preview iframe.
 3. Empty-query recents are the same file rows as search hits, with no `recently opened` footer.
-4. Command Center and overlay share `min(600px, 70vw)`; rows are 22px; Command Center height is 24px.
+4. Command Center and overlay share `min(600px, 70vw)`; rows are 22px; Command Center height is 24px, font-size 13px.
 5. Recents remain session-only; fuzzy ranking and `/api/search` are unchanged.
 6. No chevron, `file results` label, split action, Copilot chrome, or visible dimming.
 
