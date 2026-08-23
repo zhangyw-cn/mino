@@ -699,6 +699,7 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 		`icon("folder")`,
 		`icon("folder-open")`,
 		"No HTML or Markdown files found.",
+		"quick-open-icon",
 	} {
 		if !strings.Contains(js, marker) {
 			t.Fatalf("app.js missing contract %q", marker)
@@ -709,6 +710,12 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 	}
 	if strings.Contains(js, "No HTML files found.") {
 		t.Fatal("app.js must not use HTML-only empty tree copy")
+	}
+	if strings.Contains(js, "fileChipClass") {
+		t.Fatal("app.js must not use fileChipClass")
+	}
+	if strings.Contains(js, "quick-open-chip") {
+		t.Fatal("app.js must not use quick-open-chip")
 	}
 	if strings.Contains(js, "quickOpenFooter") {
 		t.Fatal("app.js must not reference quickOpenFooter")
@@ -738,7 +745,7 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 		"position: fixed",
 		"#37373d",
 		"#4fc1ff",
-		".quick-open-chip",
+		".quick-open-icon",
 		"#quick-open-backdrop",
 		"inset: 0",
 		"min(600px, 70vw)",
@@ -754,5 +761,8 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 		if !strings.Contains(css, marker) {
 			t.Fatalf("style.css missing contract %q", marker)
 		}
+	}
+	if strings.Contains(css, ".quick-open-chip") {
+		t.Fatal("style.css must not include .quick-open-chip")
 	}
 }

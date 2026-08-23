@@ -325,13 +325,6 @@
     }
   }
 
-  function fileChipClass(path) {
-    const base = basename(path).toLowerCase();
-    if (base.endsWith(".md")) return "quick-open-chip md";
-    if (base.endsWith(".html") || base.endsWith(".htm")) return "quick-open-chip html";
-    return "quick-open-chip";
-  }
-
   function setPickerOpen(open, deferBackdrop) {
     if (open) {
       pickerOpen = true;
@@ -406,9 +399,8 @@
       button.tabIndex = -1;
       button.dataset.path = row.path;
 
-      const chip = document.createElement("span");
-      chip.className = fileChipClass(row.path);
-      chip.setAttribute("aria-hidden", "true");
+      const typeIcon = icon(fileIconName(row.path));
+      typeIcon.classList.add("quick-open-icon");
 
       const name = document.createElement("span");
       name.className = "quick-open-name";
@@ -416,7 +408,7 @@
       const baseOffset = row.path.length - base.length;
       appendHighlighted(name, base, row.matches, baseOffset);
 
-      button.append(chip, name);
+      button.append(typeIcon, name);
       const parent = parentDir(row.path);
       if (parent) {
         const dir = document.createElement("span");
