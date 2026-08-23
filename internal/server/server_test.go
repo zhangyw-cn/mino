@@ -581,9 +581,8 @@ func TestIndexHTMLHasIframeAndAppJS(t *testing.T) {
 		`id="quick-open"`,
 		`id="quick-open-input"`,
 		`id="quick-open-list"`,
-		`id="quick-open-footer"`,
+		`id="quick-open-backdrop"`,
 		`role="dialog"`,
-		`recently opened`,
 		`/fuzzy.js`,
 		`class="search-wrap"`,
 	} {
@@ -593,6 +592,12 @@ func TestIndexHTMLHasIframeAndAppJS(t *testing.T) {
 	}
 	if strings.Contains(html, `id="search"`) {
 		t.Fatal("index must not include top-bar #search")
+	}
+	if strings.Contains(html, `id="quick-open-footer"`) {
+		t.Fatal("index must not include #quick-open-footer")
+	}
+	if strings.Contains(html, "recently opened") {
+		t.Fatal("index must not include recently opened footer")
 	}
 }
 
@@ -684,6 +689,10 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 		"#37373d",
 		"#4fc1ff",
 		".quick-open-chip",
+		"#quick-open-backdrop",
+		"inset: 0",
+		"min(600px, 70vw)",
+		"min-height: 22px",
 	} {
 		if !strings.Contains(css, marker) {
 			t.Fatalf("style.css missing contract %q", marker)
