@@ -2,9 +2,11 @@
   "use strict";
 
   const title = document.querySelector("#title");
-  const search = document.querySelector("#search");
-  const searchWrap = document.querySelector(".search-wrap");
+  const commandCenter = document.querySelector("#command-center");
   const quickOpen = document.querySelector("#quick-open");
+  const quickOpenInput = document.querySelector("#quick-open-input");
+  const quickOpenList = document.querySelector("#quick-open-list");
+  const quickOpenFooter = document.querySelector("#quick-open-footer");
   const tree = document.querySelector("#tree");
   const preview = document.querySelector("#preview");
   const breadcrumb = document.querySelector("#breadcrumb");
@@ -233,8 +235,10 @@
       const response = await fetch("/api/meta");
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const meta = await response.json();
-      title.textContent = meta.name || "mino";
-      document.title = `${meta.name || "mino"} · mino`;
+      const name = meta.name || "mino";
+      title.textContent = name;
+      commandCenter.textContent = name;
+      document.title = `${name} · mino`;
       watchBanner.hidden = Boolean(meta.watchEnabled);
     } catch (error) {
       console.error("Failed to load metadata", error);
@@ -264,21 +268,31 @@
     }
   }
 
+  function fileChipClass(path) {
+    const base = basename(path).toLowerCase();
+    if (base.endsWith(".md")) return "quick-open-chip md";
+    if (base.endsWith(".html") || base.endsWith(".htm")) return "quick-open-chip html";
+    return "quick-open-chip";
+  }
+
   function setPickerOpen(open) {
     if (open) {
       pickerOpen = true;
       quickOpen.hidden = false;
-      search.setAttribute("aria-expanded", "true");
+      commandCenter.setAttribute("aria-expanded", "true");
+      quickOpenInput.setAttribute("aria-expanded", "true");
       return;
     }
     pickerOpen = false;
     quickOpen.hidden = true;
-    search.setAttribute("aria-expanded", "false");
-    search.value = "";
-    search.removeAttribute("aria-activedescendant");
+    commandCenter.setAttribute("aria-expanded", "false");
+    quickOpenInput.setAttribute("aria-expanded", "false");
+    quickOpenInput.value = "";
+    quickOpenInput.removeAttribute("aria-activedescendant");
+    quickOpenFooter.hidden = true;
     activeIndex = -1;
     pickerRows = [];
-    quickOpen.replaceChildren();
+    quickOpenList.replaceChildren();
   }
 
   function showPickerMessage(message) {
@@ -286,28 +300,30 @@
     status.className = "quick-open-empty";
     status.setAttribute("role", "presentation");
     status.textContent = message;
-    quickOpen.replaceChildren(status);
+    quickOpenList.replaceChildren(status);
+    quickOpenFooter.hidden = true;
     pickerRows = [];
     activeIndex = -1;
-    search.removeAttribute("aria-activedescendant");
+    quickOpenInput.removeAttribute("aria-activedescendant");
   }
 
   function markPickerActive() {
-    const items = quickOpen.querySelectorAll(".quick-open-item");
+    const items = quickOpenList.querySelectorAll(".quick-open-item");
     items.forEach((item, index) => {
       const isActive = index === activeIndex;
       item.classList.toggle("active", isActive);
       item.setAttribute("aria-selected", String(isActive));
       if (isActive) {
-        search.setAttribute("aria-activedescendant", item.id);
+        quickOpenInput.setAttribute("aria-activedescendant", item.id);
         item.scrollIntoView({ block: "nearest" });
       }
     });
   }
 
   function renderPicker() {
-    const query = search.value.trim();
+    const query = quickOpenInput.value.trim();
     const previousPath = pickerRows[activeIndex]?.path;
+    const showingRecents = !query;
     if (!query) {
       if (!recents.length) {
         showPickerMessage("Type to search files");
@@ -315,14 +331,14 @@
       }
       pickerRows = recents.map((path) => ({ path, score: 0, matches: [] }));
     } else {
-      pickerRows = globalThis.MinoFuzzy.filter(query, fileIndex);
+      pickerRows = globalThis.MinoFuzzy.filter(query, fileIndex, recents);
       if (!pickerRows.length) {
         showPickerMessage("No matching files.");
         return;
       }
     }
 
-    quickOpen.replaceChildren();
+    quickOpenList.replaceChildren();
     pickerRows.forEach((row, index) => {
       const item = document.createElement("li");
       const button = document.createElement("button");
@@ -332,19 +348,24 @@
       button.setAttribute("role", "option");
       button.dataset.path = row.path;
 
+      const chip = document.createElement("span");
+      chip.className = fileChipClass(row.path);
+      chip.setAttribute("aria-hidden", "true");
+
       const name = document.createElement("span");
       name.className = "quick-open-name";
       const base = basename(row.path);
       const baseOffset = row.path.length - base.length;
       appendHighlighted(name, base, row.matches, baseOffset);
 
-      const dir = document.createElement("span");
-      dir.className = "quick-open-dir";
+      button.append(chip, name);
       const parent = parentDir(row.path);
-      if (parent) appendHighlighted(dir, parent, row.matches, 0);
-
-      button.append(name);
-      if (parent) button.append(dir);
+      if (parent) {
+        const dir = document.createElement("span");
+        dir.className = "quick-open-dir";
+        appendHighlighted(dir, parent, row.matches, 0);
+        button.append(dir);
+      }
       button.addEventListener("mousedown", (event) => event.preventDefault());
       button.addEventListener("pointerenter", () => {
         activeIndex = index;
@@ -352,9 +373,11 @@
       });
       button.addEventListener("click", () => acceptPath(row.path));
       item.append(button);
-      quickOpen.append(item);
+      quickOpenList.append(item);
     });
 
+    quickOpenFooter.textContent = "recently opened";
+    quickOpenFooter.hidden = !showingRecents;
     const restored = previousPath
       ? pickerRows.findIndex((row) => row.path === previousPath)
       : -1;
@@ -397,10 +420,10 @@
   function onQuickOpenHotkey(event) {
     if (!isQuickOpenHotkey(event)) return;
     event.preventDefault();
-    search.focus();
-    search.select();
     setPickerOpen(true);
     renderPicker();
+    quickOpenInput.focus();
+    quickOpenInput.select();
   }
 
   function bindPreviewHotkeys() {
@@ -416,23 +439,19 @@
   activityFiles.addEventListener("click", toggleSidebar);
   sidebarCollapse.addEventListener("click", () => setSidebarCollapsed(true));
 
-  search.addEventListener("focus", () => {
+  commandCenter.addEventListener("click", () => {
     setPickerOpen(true);
     renderPicker();
+    quickOpenInput.focus();
   });
-  searchWrap.querySelector(".search-box").addEventListener("pointerdown", () => {
-    search.focus();
-    if (pickerOpen) return;
-    setPickerOpen(true);
-    renderPicker();
-  });
-  search.addEventListener("input", () => {
+
+  quickOpenInput.addEventListener("input", () => {
     if (!pickerOpen) setPickerOpen(true);
     pickerRows = [];
     activeIndex = 0;
     renderPicker();
   });
-  search.addEventListener("keydown", (event) => {
+  quickOpenInput.addEventListener("keydown", (event) => {
     if (event.key === "ArrowDown") {
       if (!pickerRows.length) return;
       event.preventDefault();
@@ -447,7 +466,6 @@
     } else if (event.key === "Escape") {
       event.preventDefault();
       setPickerOpen(false);
-      search.blur();
     }
   });
 
@@ -456,13 +474,12 @@
 
   document.addEventListener("pointerdown", (event) => {
     if (!pickerOpen) return;
-    if (searchWrap.contains(event.target)) return;
+    if (quickOpen.contains(event.target) || commandCenter.contains(event.target)) return;
     setPickerOpen(false);
-    search.blur();
   });
   document.addEventListener("focusin", (event) => {
     if (!pickerOpen) return;
-    if (searchWrap.contains(event.target)) return;
+    if (quickOpen.contains(event.target) || commandCenter.contains(event.target)) return;
     setPickerOpen(false);
   });
 

@@ -647,6 +647,9 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 		"contentDocument",
 		"Type to search files",
 		"No matching files.",
+		"recently opened",
+		"quick-open-input",
+		"command-center",
 		`key === "e"`,
 		`key === "p"`,
 	} {
