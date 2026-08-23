@@ -582,12 +582,17 @@ func TestIndexHTMLHasIframeAndAppJS(t *testing.T) {
 		`id="quick-open-input"`,
 		`id="quick-open-list"`,
 		`id="quick-open-footer"`,
+		`role="dialog"`,
+		`recently opened`,
 		`/fuzzy.js`,
 		`class="search-wrap"`,
 	} {
 		if !strings.Contains(html, marker) {
 			t.Fatalf("index missing %q", marker)
 		}
+	}
+	if strings.Contains(html, `id="search"`) {
+		t.Fatal("index must not include top-bar #search")
 	}
 }
 
@@ -647,9 +652,10 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 		"contentDocument",
 		"Type to search files",
 		"No matching files.",
-		"recently opened",
 		"quick-open-input",
 		"command-center",
+		"commandCenter.title",
+		"tabIndex = -1",
 		"quickOpenInput.blur()",
 		`key === "e"`,
 		`key === "p"`,

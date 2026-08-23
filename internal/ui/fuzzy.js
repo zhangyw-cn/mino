@@ -68,9 +68,11 @@
     const spanA = a.matches[a.matches.length - 1] - a.matches[0];
     const spanB = b.matches[b.matches.length - 1] - b.matches[0];
     if (spanA !== spanB) return spanA < spanB;
-    const sa = a.matches.join(",");
-    const sb = b.matches.join(",");
-    return sa < sb;
+    const n = Math.min(a.matches.length, b.matches.length);
+    for (let i = 0; i < n; i++) {
+      if (a.matches[i] !== b.matches[i]) return a.matches[i] < b.matches[i];
+    }
+    return a.matches.length < b.matches.length;
   }
 
   function pickBest(q, haystack, path, offset) {

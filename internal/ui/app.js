@@ -238,6 +238,7 @@
       const name = meta.name || "mino";
       title.textContent = name;
       commandCenter.textContent = name;
+      commandCenter.title = name;
       document.title = `${name} · mino`;
       watchBanner.hidden = Boolean(meta.watchEnabled);
     } catch (error) {
@@ -347,6 +348,7 @@
       button.id = `quick-open-${index}`;
       button.className = "quick-open-item";
       button.setAttribute("role", "option");
+      button.tabIndex = -1;
       button.dataset.path = row.path;
 
       const chip = document.createElement("span");
@@ -377,7 +379,6 @@
       quickOpenList.append(item);
     });
 
-    quickOpenFooter.textContent = "recently opened";
     quickOpenFooter.hidden = !showingRecents;
     const restored = previousPath
       ? pickerRows.findIndex((row) => row.path === previousPath)
@@ -464,14 +465,16 @@
     } else if (event.key === "Enter") {
       event.preventDefault();
       acceptActive();
-    } else if (event.key === "Escape") {
-      event.preventDefault();
-      setPickerOpen(false);
-      commandCenter.focus();
     }
   });
 
   document.addEventListener("keydown", onQuickOpenHotkey, true);
+  document.addEventListener("keydown", (event) => {
+    if (!pickerOpen || event.key !== "Escape") return;
+    event.preventDefault();
+    setPickerOpen(false);
+    commandCenter.focus();
+  }, true);
   preview.addEventListener("load", bindPreviewHotkeys);
 
   document.addEventListener("pointerdown", (event) => {
