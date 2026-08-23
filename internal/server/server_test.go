@@ -554,7 +554,7 @@ func TestMetaAndIndex(t *testing.T) {
 	assertMeta(true)
 }
 
-func TestUIIndexServed(t *testing.T) {
+func TestIndexHTMLHasIframeAndAppJS(t *testing.T) {
 	_, ts, _ := newTestServer(t)
 	defer ts.Close()
 
@@ -577,8 +577,11 @@ func TestUIIndexServed(t *testing.T) {
 		`id="sidebar-collapse"`,
 		`id="breadcrumb"`,
 		`class="activity-bar"`,
-		`>Search files</span>`,
+		`id="command-center"`,
 		`id="quick-open"`,
+		`id="quick-open-input"`,
+		`id="quick-open-list"`,
+		`id="quick-open-footer"`,
 		`/fuzzy.js`,
 		`class="search-wrap"`,
 	} {
@@ -666,6 +669,11 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 		".activity-item:focus-visible",
 		".icon-button:focus-visible",
 		"grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr)",
+		"#command-center",
+		"position: fixed",
+		"#37373d",
+		"#4fc1ff",
+		".quick-open-chip",
 	} {
 		if !strings.Contains(css, marker) {
 			t.Fatalf("style.css missing contract %q", marker)

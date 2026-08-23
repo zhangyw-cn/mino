@@ -10,26 +10,33 @@
   <header class="topbar">
     <div class="brand">
       <span class="brand-mark" aria-hidden="true">M</span>
-      <h1 id="title">mino</h1>
+      <h1 id="title" class="sr-only">mino</h1>
     </div>
     <div class="search-wrap">
-      <div class="search-box">
-        <span class="search-icon" aria-hidden="true">⌕</span>
-        <span class="sr-only">Search files</span>
-        <input
-          id="search"
-          type="search"
-          placeholder="Search files…"
-          autocomplete="off"
-          role="combobox"
-          aria-autocomplete="list"
-          aria-expanded="false"
-          aria-controls="quick-open"
-        >
-      </div>
-      <ul id="quick-open" role="listbox" hidden></ul>
+      <button
+        type="button"
+        id="command-center"
+        aria-haspopup="dialog"
+        aria-expanded="false"
+        aria-controls="quick-open"
+      >mino</button>
     </div>
   </header>
+
+  <div id="quick-open" hidden>
+    <input
+      id="quick-open-input"
+      type="search"
+      placeholder="Search files by name"
+      autocomplete="off"
+      role="combobox"
+      aria-autocomplete="list"
+      aria-expanded="false"
+      aria-controls="quick-open-list"
+    >
+    <ul id="quick-open-list" role="listbox"></ul>
+    <div id="quick-open-footer" hidden>recently opened</div>
+  </div>
 
   <div id="watch-banner" class="banner" hidden>
     Live reload unavailable — refresh manually
