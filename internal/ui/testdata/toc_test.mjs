@@ -51,3 +51,13 @@ test("ensureHeadingIds assigns slug and dedupes", () => {
   assert.equal(b.id, "same-2");
   assert.deepEqual(items.map((x) => x.id), ["same", "same-2"]);
 });
+
+test("ensureHeadingIds uniquifies colliding existing ids", () => {
+  const used = new Set();
+  const a = { id: "x", tagName: "H1", textContent: "A" };
+  const b = { id: "x", tagName: "H2", textContent: "B" };
+  const items = ensureHeadingIds([a, b], used);
+  assert.equal(a.id, "x");
+  assert.equal(b.id, "x-2");
+  assert.deepEqual(items.map((x) => x.id), ["x", "x-2"]);
+});

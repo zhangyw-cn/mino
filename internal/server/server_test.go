@@ -122,6 +122,7 @@ func TestMDVendorAssetsServed(t *testing.T) {
 		"/md/vendor/katex.min.css",
 		"/md/viewer.css",
 		"/md/preprocess.js",
+		"/md/toc.js",
 		"/md/vendor/fonts/KaTeX_Main-Regular.woff2",
 	} {
 		res, err := http.Get(ts.URL + path)

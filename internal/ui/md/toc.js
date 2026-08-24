@@ -44,11 +44,9 @@
     const items = [];
     for (const el of headings) {
       const text = String(el.textContent || "").trim();
-      let id = String(el.id || "").trim();
-      if (id) {
-        set.add(id);
-      } else {
-        id = uniqueId(slugify(text), set);
+      const existing = String(el.id || "").trim();
+      const id = uniqueId(existing || slugify(text), set);
+      if (el.id !== id) {
         el.id = id;
       }
       const level = headingLevel(el);

@@ -19,6 +19,12 @@ body {
   padding: 0 16px;
 }
 
+/* No outline: keep article centered like pre-TOC viewer (body unchanged). */
+.md-layout:has(#toc[hidden]) {
+  justify-content: center;
+  max-width: 860px;
+}
+
 .markdown-body {
   box-sizing: border-box;
   flex: 1 1 auto;
