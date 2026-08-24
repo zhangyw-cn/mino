@@ -2,6 +2,12 @@
 
 Open this file in Mino (`go run ./cmd/mino ./example`) to exercise GFM, highlight, KaTeX, Mermaid, and HTML sanitization.
 
+## Outline demo
+
+### Nested heading
+
+This subsection exists so the right-side **On this page** outline can list `h1`–`h3` and exercise scroll spy.
+
 ## GFM table
 
 | Feature | Status |
