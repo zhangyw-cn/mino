@@ -75,7 +75,7 @@ On SSE `changed`, the main UI reloads the iframe as today; the outline is rebuil
 ### Heading ids
 
 1. Prefer an existing non-empty `id` on the heading.
-2. Otherwise derive a slug from the heading’s visible text: trim, lowercase, whitespace → `-`; keep ASCII alphanumerics and Unicode letters (so Chinese headings stay meaningful); strip other punctuation/symbols unsafe for HTML ids / URL fragments.
+2. Otherwise derive a slug from the heading’s visible text: trim, lowercase, whitespace → `-`; keep Unicode letters and numbers (`\p{L}` / `\p{N}`, so Chinese headings and digits stay meaningful); strip other punctuation/symbols unsafe for HTML ids / URL fragments.
 3. On collision, append `-2`, `-3`, … until unique within the document.
 4. If the slug is empty after stripping, use fallback `heading`, then apply the same dedupe suffix rules.
 

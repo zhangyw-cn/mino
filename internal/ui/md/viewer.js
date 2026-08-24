@@ -20,24 +20,44 @@
     },
   });
 
+  const TOC_LABEL = "On this page";
+  const TOC_NARROW_MQ = "(max-width: 959px)";
+  const SCROLL_SPY_OFFSET = 48;
+
+  let tocScrollAbort = null;
+  let tocNarrowMq = null;
+
   function setActiveTocLink(id) {
     document.querySelectorAll(".toc-link").forEach((a) => {
       a.classList.toggle("active", a.getAttribute("href") === "#" + id);
     });
   }
 
-  function bindScrollSpy(content, items) {
-    let ticking = false;
-    const offset = 48;
+  function setTocCollapsed(toc, toggle, collapsed) {
+    toc.classList.toggle("toc-collapsed", collapsed);
+    if (!toggle) return;
+    toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+    toggle.textContent = collapsed ? "Show" : "Hide";
+  }
 
+  function syncTocNarrowDefault(toc, toggle) {
+    if (!toc || toc.hidden || toc.classList.contains("toc-user-toggled")) return;
+    const narrow = window.matchMedia(TOC_NARROW_MQ).matches;
+    setTocCollapsed(toc, toggle, narrow);
+  }
+
+  function bindScrollSpy(items) {
+    if (tocScrollAbort) tocScrollAbort.abort();
+    tocScrollAbort = new AbortController();
+
+    let ticking = false;
     function update() {
       ticking = false;
       let current = items[0] && items[0].id;
       for (const item of items) {
         const el = document.getElementById(item.id);
         if (!el) continue;
-        const top = el.getBoundingClientRect().top;
-        if (top <= offset) current = item.id;
+        if (el.getBoundingClientRect().top <= SCROLL_SPY_OFFSET) current = item.id;
       }
       if (current) setActiveTocLink(current);
     }
@@ -50,9 +70,33 @@
           requestAnimationFrame(update);
         }
       },
-      { passive: true }
+      { passive: true, signal: tocScrollAbort.signal }
     );
     update();
+  }
+
+  function bindTocChrome(toc, toggle) {
+    if (toggle && !toggle.dataset.bound) {
+      toggle.dataset.bound = "1";
+      toggle.addEventListener("click", () => {
+        toc.classList.add("toc-user-toggled");
+        setTocCollapsed(toc, toggle, !toc.classList.contains("toc-collapsed"));
+      });
+    }
+
+    if (!tocNarrowMq) {
+      tocNarrowMq = window.matchMedia(TOC_NARROW_MQ);
+      const onNarrowChange = () => {
+        const el = document.querySelector("#toc");
+        const btn = document.querySelector("#toc-toggle");
+        syncTocNarrowDefault(el, btn);
+      };
+      if (typeof tocNarrowMq.addEventListener === "function") {
+        tocNarrowMq.addEventListener("change", onNarrowChange);
+      } else if (typeof tocNarrowMq.addListener === "function") {
+        tocNarrowMq.addListener(onNarrowChange);
+      }
+    }
   }
 
   function buildToc(content) {
@@ -64,10 +108,14 @@
     const headings = content.querySelectorAll("h1, h2, h3");
     const items = ensureHeadingIds(headings);
     nav.replaceChildren();
-    nav.setAttribute("aria-label", "On this page");
+    nav.setAttribute("aria-label", TOC_LABEL);
 
     if (!items.length) {
       toc.hidden = true;
+      if (tocScrollAbort) {
+        tocScrollAbort.abort();
+        tocScrollAbort = null;
+      }
       return;
     }
 
@@ -88,26 +136,9 @@
       nav.appendChild(a);
     }
 
-    const narrow = window.matchMedia("(max-width: 959px)").matches;
-    if (narrow && !toc.classList.contains("toc-user-toggled")) {
-      toc.classList.add("toc-collapsed");
-      if (toggle) {
-        toggle.setAttribute("aria-expanded", "false");
-        toggle.textContent = "Show";
-      }
-    }
-
-    if (toggle && !toggle.dataset.bound) {
-      toggle.dataset.bound = "1";
-      toggle.addEventListener("click", () => {
-        toc.classList.add("toc-user-toggled");
-        const collapsed = toc.classList.toggle("toc-collapsed");
-        toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
-        toggle.textContent = collapsed ? "Show" : "Hide";
-      });
-    }
-
-    bindScrollSpy(content, items);
+    bindTocChrome(toc, toggle);
+    syncTocNarrowDefault(toc, toggle);
+    bindScrollSpy(items);
   }
 
   async function render() {
