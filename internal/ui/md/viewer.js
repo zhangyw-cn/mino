@@ -1,5 +1,6 @@
 (function () {
   const { preprocessMath, escapeHtml } = globalThis.MinoMDPreprocess;
+  const { ensureHeadingIds } = globalThis.MinoMDToc;
 
   function languageName(lang) {
     return String(lang || "")
@@ -18,6 +19,96 @@
       },
     },
   });
+
+  function setActiveTocLink(id) {
+    document.querySelectorAll(".toc-link").forEach((a) => {
+      a.classList.toggle("active", a.getAttribute("href") === "#" + id);
+    });
+  }
+
+  function bindScrollSpy(content, items) {
+    let ticking = false;
+    const offset = 48;
+
+    function update() {
+      ticking = false;
+      let current = items[0] && items[0].id;
+      for (const item of items) {
+        const el = document.getElementById(item.id);
+        if (!el) continue;
+        const top = el.getBoundingClientRect().top;
+        if (top <= offset) current = item.id;
+      }
+      if (current) setActiveTocLink(current);
+    }
+
+    window.addEventListener(
+      "scroll",
+      () => {
+        if (!ticking) {
+          ticking = true;
+          requestAnimationFrame(update);
+        }
+      },
+      { passive: true }
+    );
+    update();
+  }
+
+  function buildToc(content) {
+    const toc = document.querySelector("#toc");
+    const nav = document.querySelector("#toc-nav");
+    const toggle = document.querySelector("#toc-toggle");
+    if (!toc || !nav) return;
+
+    const headings = content.querySelectorAll("h1, h2, h3");
+    const items = ensureHeadingIds(headings);
+    nav.replaceChildren();
+    nav.setAttribute("aria-label", "On this page");
+
+    if (!items.length) {
+      toc.hidden = true;
+      return;
+    }
+
+    toc.hidden = false;
+    for (const item of items) {
+      const a = document.createElement("a");
+      a.href = "#" + item.id;
+      a.className = "toc-link toc-level-" + item.level;
+      a.textContent = item.text || item.id;
+      a.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        const target = document.getElementById(item.id);
+        if (!target) return;
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+        history.replaceState(null, "", "#" + item.id);
+        setActiveTocLink(item.id);
+      });
+      nav.appendChild(a);
+    }
+
+    const narrow = window.matchMedia("(max-width: 959px)").matches;
+    if (narrow && !toc.classList.contains("toc-user-toggled")) {
+      toc.classList.add("toc-collapsed");
+      if (toggle) {
+        toggle.setAttribute("aria-expanded", "false");
+        toggle.textContent = "Show";
+      }
+    }
+
+    if (toggle && !toggle.dataset.bound) {
+      toggle.dataset.bound = "1";
+      toggle.addEventListener("click", () => {
+        toc.classList.add("toc-user-toggled");
+        const collapsed = toc.classList.toggle("toc-collapsed");
+        toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+        toggle.textContent = collapsed ? "Show" : "Hide";
+      });
+    }
+
+    bindScrollSpy(content, items);
+  }
 
   async function render() {
     const content = document.querySelector("#content");
@@ -53,7 +144,7 @@
 
     const clean = DOMPurify.sanitize(html, {
       USE_PROFILES: { html: true },
-      ADD_ATTR: ["class"],
+      ADD_ATTR: ["class", "id"],
       FORBID_TAGS: ["script", "iframe", "object", "embed", "form"],
     });
     content.innerHTML = clean;
@@ -107,6 +198,8 @@
         }
       }
     }
+
+    buildToc(content);
   }
 
   render();

@@ -10,7 +10,16 @@
   <link rel="stylesheet" href="/md/vendor/katex.min.css">
 </head>
 <body>
-  <main id="content" class="markdown-body" data-path="{{.Path}}"></main>
+  <div class="md-layout">
+    <main id="content" class="markdown-body" data-path="{{.Path}}"></main>
+    <aside id="toc" class="toc" hidden>
+      <div class="toc-header">
+        <span class="toc-title">On this page</span>
+        <button type="button" id="toc-toggle" class="toc-toggle" aria-expanded="true" aria-controls="toc-nav">Hide</button>
+      </div>
+      <nav id="toc-nav" class="toc-nav" aria-label="On this page"></nav>
+    </aside>
+  </div>
   <p id="error" class="error" hidden></p>
   <script src="/md/vendor/marked.min.js"></script>
   <script src="/md/vendor/purify.min.js"></script>
@@ -18,6 +27,7 @@
   <script src="/md/vendor/katex.min.js"></script>
   <script src="/md/vendor/mermaid.min.js"></script>
   <script src="/md/preprocess.js"></script>
+  <script src="/md/toc.js"></script>
   <script src="/md/viewer.js"></script>
 </body>
 </html>

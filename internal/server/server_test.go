@@ -192,6 +192,10 @@ func TestViewerPipelineMarkers(t *testing.T) {
 		"MinoMDPreprocess",
 		`securityLevel: "strict"`,
 		"nodes: [node]",
+		"MinoMDToc",
+		"ensureHeadingIds",
+		"scrollIntoView",
+		"On this page",
 	} {
 		if !strings.Contains(js, marker) {
 			t.Fatalf("viewer.js missing %q", marker)
@@ -224,6 +228,12 @@ func TestMarkdownAppsAndRaw(t *testing.T) {
 	}
 	if !strings.Contains(html, "/md/preprocess.js") {
 		t.Fatalf("missing preprocess.js: %s", body)
+	}
+	if !strings.Contains(html, `id="toc"`) {
+		t.Fatalf("missing toc shell: %s", body)
+	}
+	if !strings.Contains(html, "/md/toc.js") {
+		t.Fatalf("missing toc.js: %s", body)
 	}
 
 	res, err = http.Get(ts.URL + "/md/viewer.js")
