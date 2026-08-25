@@ -1,6 +1,7 @@
 (function () {
   const { preprocessMath, escapeHtml } = globalThis.MinoMDPreprocess;
   const { ensureHeadingIds } = globalThis.MinoMDToc;
+  const { createMermaidBlock } = globalThis.MinoMDMermaidBlock;
 
   function languageName(lang) {
     return String(lang || "")
@@ -213,19 +214,18 @@
     const mermaidBlocks = content.querySelectorAll("pre code.language-mermaid");
     if (mermaidBlocks.length) {
       mermaid.initialize({ startOnLoad: false, theme: "dark", securityLevel: "strict" });
+      const instances = [];
       for (const block of mermaidBlocks) {
         const pre = block.parentElement;
-        const div = document.createElement("div");
-        div.className = "mermaid";
-        div.textContent = block.textContent;
-        pre.replaceWith(div);
+        const inst = createMermaidBlock(block.textContent, escapeHtml);
+        pre.replaceWith(inst.root);
+        instances.push(inst);
       }
-      for (const node of content.querySelectorAll(".mermaid")) {
+      for (const inst of instances) {
         try {
-          await mermaid.run({ nodes: [node] });
+          await mermaid.run({ nodes: [inst.diagramEl] });
         } catch (_) {
-          node.classList.add("render-error");
-          node.textContent = "Diagram render failed";
+          inst.setRenderFailed();
         }
       }
     }

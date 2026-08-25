@@ -165,10 +165,120 @@ body {
   text-align: center;
 }
 
-.mermaid {
-  overflow-x: auto;
+.mermaid-block {
   margin: 1em 0;
+  border: 1px solid #3c3c3c;
+  border-radius: 4px;
+  background: #252526;
+  overflow: hidden;
+}
+
+.mermaid-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-bottom: 1px solid #3c3c3c;
+  background: #2d2d2d;
+}
+
+.mermaid-mode-group,
+.mermaid-preview-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.mermaid-preview-actions[hidden] {
+  display: none;
+}
+
+.mermaid-toolbar button {
+  background: transparent;
+  border: 1px solid #3c3c3c;
+  color: #cccccc;
+  border-radius: 4px;
+  font-size: 12px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+
+.mermaid-toolbar button[aria-pressed="true"] {
+  border-color: #3794ff;
+  color: #e8e8e8;
+}
+
+.mermaid-panes {
+  display: grid;
+  grid-template-columns: 1fr;
+  min-height: 120px;
+}
+
+.mermaid-block.mode-code .mermaid-viewport {
+  display: none;
+}
+
+.mermaid-block.mode-preview .mermaid-source {
+  display: none;
+}
+
+.mermaid-block.mode-split .mermaid-panes {
+  grid-template-columns: 1fr 1fr;
+}
+
+.mermaid-block pre.mermaid-source {
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+  max-height: 480px;
+  font-family: "Cascadia Code", ui-monospace, monospace;
+  font-size: 13px;
+  background: #1e1e1e;
+  border: 0;
+  border-radius: 0;
+}
+
+.mermaid-viewport {
+  overflow: hidden;
+  position: relative;
+  min-height: 160px;
+  background: #1e1e1e;
+}
+
+.mermaid-zoom-target {
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+.mermaid-diagram {
+  overflow: visible;
+  margin: 0;
+  padding: 12px;
   text-align: center;
+}
+
+.mermaid-diagram svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.mermaid-block.mode-preview .mermaid-diagram svg {
+  max-width: none;
+}
+
+.mermaid-block.mode-preview .mermaid-viewport {
+  cursor: grab;
+}
+
+.mermaid-block.mode-preview .mermaid-viewport.is-panning {
+  cursor: grabbing;
+}
+
+@media (max-width: 959px) {
+  .mermaid-block.mode-split .mermaid-panes {
+    grid-template-columns: 1fr;
+  }
 }
 
 .error,

@@ -11,6 +11,7 @@ const {
   clampScale,
   zoomAtPoint,
   applyTransformStyle,
+  previewActionsVisible,
 } = createRequire(import.meta.url)("../md/mermaid-block.js");
 
 test("normalizeMode defaults unknown to preview", () => {
@@ -54,4 +55,11 @@ test("applyTransformStyle", () => {
     applyTransformStyle({ scale: 1.5, tx: 10, ty: -4 }),
     "translate(10px, -4px) scale(1.5)"
   );
+});
+
+test("previewActionsVisible", () => {
+  assert.equal(previewActionsVisible("preview", false), true);
+  assert.equal(previewActionsVisible("code", false), false);
+  assert.equal(previewActionsVisible("split", false), false);
+  assert.equal(previewActionsVisible("preview", true), false);
 });
