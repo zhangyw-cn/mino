@@ -13,6 +13,7 @@ const {
   applyTransformStyle,
   previewActionsVisible,
   wheelZoomFactor,
+  withOverflowLocked,
 } = createRequire(import.meta.url)("../md/mermaid-block.js");
 
 test("normalizeMode defaults unknown to preview", () => {
@@ -68,4 +69,15 @@ test("previewActionsVisible", () => {
 test("wheelZoomFactor", () => {
   assert.equal(wheelZoomFactor(-100), 1.1);
   assert.equal(wheelZoomFactor(100), 1 / 1.1);
+});
+
+test("withOverflowLocked restores previous overflow", () => {
+  const html = { style: { overflow: "" } };
+  const body = { style: { overflow: "auto" } };
+  const unlock = withOverflowLocked(html, body);
+  assert.equal(html.style.overflow, "hidden");
+  assert.equal(body.style.overflow, "hidden");
+  unlock();
+  assert.equal(html.style.overflow, "");
+  assert.equal(body.style.overflow, "auto");
 });

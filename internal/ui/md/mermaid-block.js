@@ -132,12 +132,85 @@
         inst.resetZoom();
         return;
       }
+      if (action === "fullscreen") {
+        openMermaidFullscreen(inst);
+        return;
+      }
       if (action === "zoom-in" || action === "zoom-out") {
         const rect = viewport.getBoundingClientRect();
         const factor = action === "zoom-in" ? 1.1 : 1 / 1.1;
         zoomBy(factor, rect.left + rect.width / 2, rect.top + rect.height / 2);
       }
     });
+  }
+
+  function withOverflowLocked(htmlEl, bodyEl) {
+    const prevHtml = htmlEl.style.overflow;
+    const prevBody = bodyEl.style.overflow;
+    htmlEl.style.overflow = "hidden";
+    bodyEl.style.overflow = "hidden";
+    return function unlock() {
+      htmlEl.style.overflow = prevHtml;
+      bodyEl.style.overflow = prevBody;
+    };
+  }
+
+  let fsState = null; // { inst, unlock, onKey, placeholder }
+
+  function ensureOverlay() {
+    let el = document.querySelector(".mermaid-fs-overlay");
+    if (el) return el;
+    el = document.createElement("div");
+    el.className = "mermaid-fs-overlay";
+    el.hidden = true;
+    el.innerHTML =
+      '<div class="mermaid-fs-chrome">' +
+      '<button type="button" data-action="fs-close" aria-label="Close">Close</button>' +
+      "</div>" +
+      '<div class="mermaid-fs-stage"></div>';
+    document.body.appendChild(el);
+    el.addEventListener("click", (ev) => {
+      if (ev.target === el) closeMermaidFullscreen();
+    });
+    el.querySelector('[data-action="fs-close"]').addEventListener("click", () => {
+      closeMermaidFullscreen();
+    });
+    return el;
+  }
+
+  function closeMermaidFullscreen() {
+    if (!fsState) return;
+    const { inst, unlock, onKey, placeholder } = fsState;
+    document.removeEventListener("keydown", onKey);
+    unlock();
+    const overlay = ensureOverlay();
+    const stage = overlay.querySelector(".mermaid-fs-stage");
+    const viewport = stage.querySelector(".mermaid-viewport");
+    if (viewport && placeholder && placeholder.parentNode) {
+      placeholder.replaceWith(viewport);
+    }
+    overlay.hidden = true;
+    inst.resetZoom();
+    fsState = null;
+  }
+
+  function openMermaidFullscreen(inst) {
+    if (inst.isFailed() || inst.getMode() !== "preview") return;
+    if (fsState) closeMermaidFullscreen();
+    const overlay = ensureOverlay();
+    const stage = overlay.querySelector(".mermaid-fs-stage");
+    const viewport = inst.getViewport();
+    const placeholder = document.createElement("div");
+    placeholder.className = "mermaid-fs-placeholder";
+    viewport.replaceWith(placeholder);
+    stage.replaceChildren(viewport);
+    const unlock = withOverflowLocked(document.documentElement, document.body);
+    const onKey = (ev) => {
+      if (ev.key === "Escape") closeMermaidFullscreen();
+    };
+    document.addEventListener("keydown", onKey);
+    overlay.hidden = false;
+    fsState = { inst, unlock, onKey, placeholder };
   }
 
   function createMermaidBlock(sourceText, escapeHtml) {
@@ -258,5 +331,8 @@
     createMermaidBlock,
     wheelZoomFactor,
     bindPreviewInteractions,
+    withOverflowLocked,
+    openMermaidFullscreen,
+    closeMermaidFullscreen,
   };
 });

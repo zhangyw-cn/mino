@@ -275,6 +275,60 @@ body {
   cursor: grabbing;
 }
 
+.mermaid-fs-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.72);
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  box-sizing: border-box;
+}
+
+.mermaid-fs-overlay[hidden] {
+  display: none !important;
+}
+
+.mermaid-fs-chrome {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.mermaid-fs-chrome button {
+  background: #2d2d2d;
+  border: 1px solid #3c3c3c;
+  color: #e8e8e8;
+  border-radius: 4px;
+  padding: 4px 12px;
+  cursor: pointer;
+}
+
+.mermaid-fs-stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  background: #1e1e1e;
+  border: 1px solid #3c3c3c;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.mermaid-fs-stage .mermaid-viewport {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  cursor: grab;
+}
+
+.mermaid-fs-stage .mermaid-viewport.is-panning {
+  cursor: grabbing;
+}
+
+.mermaid-fs-placeholder {
+  display: none;
+}
+
 @media (max-width: 959px) {
   .mermaid-block.mode-split .mermaid-panes {
     grid-template-columns: 1fr;
