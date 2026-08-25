@@ -252,6 +252,10 @@ body {
 
 .mermaid-zoom-target {
   transform-origin: 0 0;
+}
+
+.mermaid-viewport.is-panning .mermaid-zoom-target,
+.mermaid-zoom-target.is-transforming {
   will-change: transform;
 }
 
@@ -260,6 +264,10 @@ body {
   margin: 0;
   padding: 12px;
   text-align: center;
+}
+
+.mermaid-diagram.render-error {
+  margin: 0;
 }
 
 .mermaid-diagram svg {
@@ -274,6 +282,9 @@ body {
 
 .mermaid-block.mode-preview:not(.is-failed) .mermaid-viewport {
   cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .mermaid-block.mode-preview:not(.is-failed) .mermaid-viewport.is-panning {
@@ -324,6 +335,9 @@ body {
   height: 100%;
   min-height: 100%;
   cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .mermaid-fs-stage .mermaid-viewport.is-panning {

@@ -59,7 +59,9 @@
   }
 
   function wheelZoomFactor(deltaY) {
-    return deltaY < 0 ? 1.1 : 1 / 1.1;
+    const d = Number(deltaY);
+    if (!(d < 0) && !(d > 0)) return 1;
+    return d < 0 ? 1.1 : 1 / 1.1;
   }
 
   function bindPreviewInteractions(inst) {
@@ -71,7 +73,7 @@
     }
 
     function zoomBy(factor, clientX, clientY) {
-      if (!canZoom()) return;
+      if (!canZoom() || factor === 1) return;
       const rect = viewport.getBoundingClientRect();
       const x = clientX - rect.left;
       const y = clientY - rect.top;
@@ -83,8 +85,10 @@
       "wheel",
       (ev) => {
         if (!canZoom()) return;
+        const factor = wheelZoomFactor(ev.deltaY);
+        if (factor === 1) return;
         ev.preventDefault();
-        zoomBy(wheelZoomFactor(ev.deltaY), ev.clientX, ev.clientY);
+        zoomBy(factor, ev.clientX, ev.clientY);
       },
       { passive: false }
     );
@@ -93,8 +97,20 @@
     let lastX = 0;
     let lastY = 0;
 
+    function endDrag(ev) {
+      if (!dragging) return;
+      dragging = false;
+      viewport.classList.remove("is-panning");
+      if (ev && ev.type !== "lostpointercapture" && ev.pointerId != null) {
+        try {
+          viewport.releasePointerCapture(ev.pointerId);
+        } catch (_) {}
+      }
+    }
+
     viewport.addEventListener("pointerdown", (ev) => {
       if (!canZoom() || ev.button !== 0) return;
+      ev.preventDefault();
       dragging = true;
       lastX = ev.clientX;
       lastY = ev.clientY;
@@ -104,6 +120,10 @@
 
     viewport.addEventListener("pointermove", (ev) => {
       if (!dragging) return;
+      if (!canZoom()) {
+        endDrag(ev);
+        return;
+      }
       const dx = ev.clientX - lastX;
       const dy = ev.clientY - lastY;
       lastX = ev.clientX;
@@ -112,17 +132,9 @@
       inst.applyZoomState({ scale: z.scale, tx: z.tx + dx, ty: z.ty + dy });
     });
 
-    function endDrag(ev) {
-      if (!dragging) return;
-      dragging = false;
-      viewport.classList.remove("is-panning");
-      try {
-        viewport.releasePointerCapture(ev.pointerId);
-      } catch (_) {}
-    }
-
     viewport.addEventListener("pointerup", endDrag);
     viewport.addEventListener("pointercancel", endDrag);
+    viewport.addEventListener("lostpointercapture", endDrag);
 
     root.querySelector(".mermaid-preview-actions").addEventListener("click", (ev) => {
       const btn = ev.target.closest("[data-action]");
@@ -313,6 +325,9 @@
         ty: state.ty,
       };
       zoomTarget.style.transform = applyTransformStyle(zoom);
+      const transforming =
+        zoom.scale !== 1 || zoom.tx !== 0 || zoom.ty !== 0;
+      zoomTarget.classList.toggle("is-transforming", transforming);
     }
 
     function resetZoom() {

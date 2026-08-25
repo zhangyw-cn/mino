@@ -33,6 +33,8 @@ test("modeClass", () => {
 });
 
 test("clampScale", () => {
+  assert.equal(SCALE_MIN, 0.25);
+  assert.equal(SCALE_MAX, 4);
   assert.equal(clampScale(1), 1);
   assert.equal(clampScale(0.01), SCALE_MIN);
   assert.equal(clampScale(99), SCALE_MAX);
@@ -47,10 +49,21 @@ test("zoomAtPoint scales around cursor", () => {
   assert.equal(after.ty, 50 - 50 * 2);
 });
 
+test("zoomAtPoint with existing pan keeps cursor content point", () => {
+  const before = { scale: 2, tx: 10, ty: -5 };
+  const after = zoomAtPoint(before, { x: 40, y: 20, factor: 2 });
+  assert.equal(after.scale, 4);
+  assert.equal(after.tx, 40 - (40 - 10) * 2);
+  assert.equal(after.ty, 20 - (20 - -5) * 2);
+});
+
 test("zoomAtPoint clamps and no-ops at limit", () => {
   const atMax = { scale: SCALE_MAX, tx: 10, ty: 20 };
-  const after = zoomAtPoint(atMax, { x: 0, y: 0, factor: 2 });
-  assert.deepEqual(after, atMax);
+  const afterMax = zoomAtPoint(atMax, { x: 0, y: 0, factor: 2 });
+  assert.deepEqual(afterMax, atMax);
+  const atMin = { scale: SCALE_MIN, tx: 3, ty: 4 };
+  const afterMin = zoomAtPoint(atMin, { x: 10, y: 10, factor: 0.5 });
+  assert.deepEqual(afterMin, atMin);
 });
 
 test("applyTransformStyle", () => {
@@ -70,6 +83,7 @@ test("previewActionsVisible", () => {
 test("wheelZoomFactor", () => {
   assert.equal(wheelZoomFactor(-100), 1.1);
   assert.equal(wheelZoomFactor(100), 1 / 1.1);
+  assert.equal(wheelZoomFactor(0), 1);
 });
 
 test("withOverflowLocked restores previous overflow", () => {
