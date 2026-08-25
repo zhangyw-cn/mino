@@ -14,6 +14,7 @@ const {
   previewActionsVisible,
   wheelZoomFactor,
   withOverflowLocked,
+  restoreFullscreenViewport,
 } = createRequire(import.meta.url)("../md/mermaid-block.js");
 
 test("normalizeMode defaults unknown to preview", () => {
@@ -80,4 +81,38 @@ test("withOverflowLocked restores previous overflow", () => {
   unlock();
   assert.equal(html.style.overflow, "");
   assert.equal(body.style.overflow, "auto");
+});
+
+test("restoreFullscreenViewport replaces placeholder when attached", () => {
+  const calls = [];
+  const viewport = { id: "vp" };
+  const placeholder = {
+    parentNode: {},
+    replaceWith(node) {
+      calls.push(["replace", node]);
+    },
+  };
+  assert.equal(restoreFullscreenViewport(placeholder, viewport, null), "replaced");
+  assert.deepEqual(calls, [["replace", viewport]]);
+});
+
+test("restoreFullscreenViewport appends to panes when placeholder detached", () => {
+  const appended = [];
+  const viewport = { id: "vp" };
+  const placeholder = { parentNode: null };
+  const panes = {
+    appendChild(node) {
+      appended.push(node);
+    },
+  };
+  assert.equal(restoreFullscreenViewport(placeholder, viewport, panes), "appended");
+  assert.deepEqual(appended, [viewport]);
+});
+
+test("restoreFullscreenViewport lost without viewport or parent", () => {
+  assert.equal(restoreFullscreenViewport(null, null, null), "lost");
+  assert.equal(
+    restoreFullscreenViewport({ parentNode: null }, { id: "vp" }, null),
+    "lost"
+  );
 });

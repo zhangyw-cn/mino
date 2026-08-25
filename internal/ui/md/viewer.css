@@ -246,6 +246,10 @@ body {
   background: #1e1e1e;
 }
 
+.mermaid-block.mode-split .mermaid-viewport {
+  overflow: auto;
+}
+
 .mermaid-zoom-target {
   transform-origin: 0 0;
   will-change: transform;
@@ -263,7 +267,8 @@ body {
   height: auto;
 }
 
-.mermaid-block.mode-preview .mermaid-diagram svg {
+.mermaid-block.mode-preview .mermaid-diagram svg,
+.mermaid-fs-stage .mermaid-diagram svg {
   max-width: none;
 }
 

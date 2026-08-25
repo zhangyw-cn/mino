@@ -155,7 +155,21 @@
     };
   }
 
-  let fsState = null; // { inst, unlock, onKey, placeholder }
+  let fsState = null; // { inst, unlock, onKey, placeholder, viewport, inertEl }
+
+  /** Restore viewport after fullscreen; used by close and unit-tested. */
+  function restoreFullscreenViewport(placeholder, viewport, panesEl) {
+    if (!viewport) return "lost";
+    if (placeholder && placeholder.parentNode) {
+      placeholder.replaceWith(viewport);
+      return "replaced";
+    }
+    if (panesEl) {
+      panesEl.appendChild(viewport);
+      return "appended";
+    }
+    return "lost";
+  }
 
   function ensureOverlay() {
     let el = document.querySelector(".mermaid-fs-overlay");
@@ -163,6 +177,9 @@
     el = document.createElement("div");
     el.className = "mermaid-fs-overlay";
     el.hidden = true;
+    el.setAttribute("role", "dialog");
+    el.setAttribute("aria-modal", "true");
+    el.setAttribute("aria-label", "Mermaid fullscreen");
     el.innerHTML =
       '<div class="mermaid-fs-chrome">' +
       '<button type="button" data-action="fs-close" aria-label="Close">Close</button>' +
@@ -180,15 +197,13 @@
 
   function closeMermaidFullscreen() {
     if (!fsState) return;
-    const { inst, unlock, onKey, placeholder } = fsState;
+    const { inst, unlock, onKey, placeholder, viewport, inertEl } = fsState;
     document.removeEventListener("keydown", onKey);
     unlock();
+    if (inertEl) inertEl.inert = false;
+    const panes = inst.root.querySelector(".mermaid-panes");
+    restoreFullscreenViewport(placeholder, viewport, panes);
     const overlay = ensureOverlay();
-    const stage = overlay.querySelector(".mermaid-fs-stage");
-    const viewport = stage.querySelector(".mermaid-viewport");
-    if (viewport && placeholder && placeholder.parentNode) {
-      placeholder.replaceWith(viewport);
-    }
     overlay.hidden = true;
     inst.resetZoom();
     fsState = null;
@@ -197,25 +212,32 @@
   function openMermaidFullscreen(inst) {
     if (inst.isFailed() || inst.getMode() !== "preview") return;
     if (fsState) closeMermaidFullscreen();
+    const viewport = inst.getViewport();
+    if (!viewport) return;
     const overlay = ensureOverlay();
     const stage = overlay.querySelector(".mermaid-fs-stage");
-    const viewport = inst.getViewport();
     const placeholder = document.createElement("div");
     placeholder.className = "mermaid-fs-placeholder";
     viewport.replaceWith(placeholder);
     stage.replaceChildren(viewport);
     const unlock = withOverflowLocked(document.documentElement, document.body);
+    const inertEl = document.querySelector("#content");
+    if (inertEl) inertEl.inert = true;
     const onKey = (ev) => {
-      if (ev.key === "Escape") closeMermaidFullscreen();
+      if (ev.key === "Escape") {
+        ev.preventDefault();
+        closeMermaidFullscreen();
+      }
     };
     document.addEventListener("keydown", onKey);
     overlay.hidden = false;
-    fsState = { inst, unlock, onKey, placeholder };
+    const closeBtn = overlay.querySelector('[data-action="fs-close"]');
+    if (closeBtn && typeof closeBtn.focus === "function") closeBtn.focus();
+    fsState = { inst, unlock, onKey, placeholder, viewport, inertEl };
   }
 
-  function createMermaidBlock(sourceText, escapeHtml) {
+  function createMermaidBlock(sourceText, _escapeHtml) {
     const source = String(sourceText || "");
-    const esc = typeof escapeHtml === "function" ? escapeHtml : (t) => t;
 
     const root = document.createElement("figure");
     root.className = "mermaid-block " + modeClass(DEFAULT_MODE);
@@ -246,9 +268,12 @@
 
     const actions = root.querySelector(".mermaid-preview-actions");
     const zoomTarget = root.querySelector(".mermaid-zoom-target");
+    const viewportEl = root.querySelector(".mermaid-viewport");
+    const panesEl = root.querySelector(".mermaid-panes");
     let mode = DEFAULT_MODE;
     let failed = false;
     let zoom = { scale: 1, tx: 0, ty: 0 };
+    let inst = null;
 
     function syncChrome() {
       root.dataset.mode = mode;
@@ -266,6 +291,7 @@
     function setMode(next) {
       mode = normalizeMode(next);
       if (mode !== "preview") {
+        if (fsState && fsState.inst === inst) closeMermaidFullscreen();
         zoom = { scale: 1, tx: 0, ty: 0 };
         zoomTarget.style.transform = applyTransformStyle(zoom);
       }
@@ -301,15 +327,16 @@
 
     syncChrome();
 
-    const inst = {
+    inst = {
       root,
       diagramEl,
       setMode,
       getMode: () => mode,
       setRenderFailed,
       resetZoom,
-      getViewport: () => root.querySelector(".mermaid-viewport"),
+      getViewport: () => viewportEl,
       getZoomTarget: () => zoomTarget,
+      getPanes: () => panesEl,
       applyZoomState,
       getZoomState: () => ({ scale: zoom.scale, tx: zoom.tx, ty: zoom.ty }),
       isFailed: () => failed,
@@ -332,6 +359,7 @@
     wheelZoomFactor,
     bindPreviewInteractions,
     withOverflowLocked,
+    restoreFullscreenViewport,
     openMermaidFullscreen,
     closeMermaidFullscreen,
   };
