@@ -50,6 +50,8 @@ A single-line `\[ E = mc^2 \]` is **not** treated as display math. Academic cita
 
 ## Mermaid
 
+Each diagram has Code / Split / Preview controls (default Preview). In Preview, use the toolbar or wheel+drag to zoom, and Fullscreen for a larger overlay.
+
 A valid flowchart should render in the preview:
 
 ```mermaid

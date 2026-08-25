@@ -123,6 +123,7 @@ func TestMDVendorAssetsServed(t *testing.T) {
 		"/md/viewer.css",
 		"/md/preprocess.js",
 		"/md/toc.js",
+		"/md/mermaid-block.js",
 		"/md/vendor/fonts/KaTeX_Main-Regular.woff2",
 	} {
 		res, err := http.Get(ts.URL + path)
@@ -237,6 +238,9 @@ func TestMarkdownAppsAndRaw(t *testing.T) {
 	}
 	if !strings.Contains(html, "/md/toc.js") {
 		t.Fatalf("missing toc.js: %s", body)
+	}
+	if !strings.Contains(html, "/md/mermaid-block.js") {
+		t.Fatalf("missing mermaid-block.js: %s", body)
 	}
 
 	res, err = http.Get(ts.URL + "/md/viewer.js")
