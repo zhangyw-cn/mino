@@ -58,6 +58,88 @@
     return normalizeMode(mode) === "preview" && !failed;
   }
 
+  function wheelZoomFactor(deltaY) {
+    return deltaY < 0 ? 1.1 : 1 / 1.1;
+  }
+
+  function bindPreviewInteractions(inst) {
+    const viewport = inst.getViewport();
+    const root = inst.root;
+
+    function canZoom() {
+      return inst.getMode() === "preview" && !inst.isFailed();
+    }
+
+    function zoomBy(factor, clientX, clientY) {
+      if (!canZoom()) return;
+      const rect = viewport.getBoundingClientRect();
+      const x = clientX - rect.left;
+      const y = clientY - rect.top;
+      const next = zoomAtPoint(inst.getZoomState(), { x, y, factor });
+      inst.applyZoomState(next);
+    }
+
+    viewport.addEventListener(
+      "wheel",
+      (ev) => {
+        if (!canZoom()) return;
+        ev.preventDefault();
+        zoomBy(wheelZoomFactor(ev.deltaY), ev.clientX, ev.clientY);
+      },
+      { passive: false }
+    );
+
+    let dragging = false;
+    let lastX = 0;
+    let lastY = 0;
+
+    viewport.addEventListener("pointerdown", (ev) => {
+      if (!canZoom() || ev.button !== 0) return;
+      dragging = true;
+      lastX = ev.clientX;
+      lastY = ev.clientY;
+      viewport.classList.add("is-panning");
+      viewport.setPointerCapture(ev.pointerId);
+    });
+
+    viewport.addEventListener("pointermove", (ev) => {
+      if (!dragging) return;
+      const dx = ev.clientX - lastX;
+      const dy = ev.clientY - lastY;
+      lastX = ev.clientX;
+      lastY = ev.clientY;
+      const z = inst.getZoomState();
+      inst.applyZoomState({ scale: z.scale, tx: z.tx + dx, ty: z.ty + dy });
+    });
+
+    function endDrag(ev) {
+      if (!dragging) return;
+      dragging = false;
+      viewport.classList.remove("is-panning");
+      try {
+        viewport.releasePointerCapture(ev.pointerId);
+      } catch (_) {}
+    }
+
+    viewport.addEventListener("pointerup", endDrag);
+    viewport.addEventListener("pointercancel", endDrag);
+
+    root.querySelector(".mermaid-preview-actions").addEventListener("click", (ev) => {
+      const btn = ev.target.closest("[data-action]");
+      if (!btn) return;
+      const action = btn.getAttribute("data-action");
+      if (action === "zoom-reset") {
+        inst.resetZoom();
+        return;
+      }
+      if (action === "zoom-in" || action === "zoom-out") {
+        const rect = viewport.getBoundingClientRect();
+        const factor = action === "zoom-in" ? 1.1 : 1 / 1.1;
+        zoomBy(factor, rect.left + rect.width / 2, rect.top + rect.height / 2);
+      }
+    });
+  }
+
   function createMermaidBlock(sourceText, escapeHtml) {
     const source = String(sourceText || "");
     const esc = typeof escapeHtml === "function" ? escapeHtml : (t) => t;
@@ -146,7 +228,7 @@
 
     syncChrome();
 
-    return {
+    const inst = {
       root,
       diagramEl,
       setMode,
@@ -159,6 +241,8 @@
       getZoomState: () => ({ scale: zoom.scale, tx: zoom.tx, ty: zoom.ty }),
       isFailed: () => failed,
     };
+    bindPreviewInteractions(inst);
+    return inst;
   }
 
   return {
@@ -172,5 +256,7 @@
     applyTransformStyle,
     previewActionsVisible,
     createMermaidBlock,
+    wheelZoomFactor,
+    bindPreviewInteractions,
   };
 });

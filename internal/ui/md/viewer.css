@@ -267,11 +267,11 @@ body {
   max-width: none;
 }
 
-.mermaid-block.mode-preview .mermaid-viewport {
+.mermaid-block.mode-preview:not(.is-failed) .mermaid-viewport {
   cursor: grab;
 }
 
-.mermaid-block.mode-preview .mermaid-viewport.is-panning {
+.mermaid-block.mode-preview:not(.is-failed) .mermaid-viewport.is-panning {
   cursor: grabbing;
 }
 

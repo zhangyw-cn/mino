@@ -12,6 +12,7 @@ const {
   zoomAtPoint,
   applyTransformStyle,
   previewActionsVisible,
+  wheelZoomFactor,
 } = createRequire(import.meta.url)("../md/mermaid-block.js");
 
 test("normalizeMode defaults unknown to preview", () => {
@@ -62,4 +63,9 @@ test("previewActionsVisible", () => {
   assert.equal(previewActionsVisible("code", false), false);
   assert.equal(previewActionsVisible("split", false), false);
   assert.equal(previewActionsVisible("preview", true), false);
+});
+
+test("wheelZoomFactor", () => {
+  assert.equal(wheelZoomFactor(-100), 1.1);
+  assert.equal(wheelZoomFactor(100), 1 / 1.1);
 });
