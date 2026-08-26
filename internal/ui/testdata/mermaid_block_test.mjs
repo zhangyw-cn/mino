@@ -15,6 +15,9 @@ const {
   wheelZoomFactor,
   withOverflowLocked,
   restoreFullscreenViewport,
+  readSvgBaseSize,
+  svgSizeForScale,
+  applySvgZoomSize,
 } = createRequire(import.meta.url)("../md/mermaid-block.js");
 
 test("normalizeMode defaults unknown to preview", () => {
@@ -66,11 +69,81 @@ test("zoomAtPoint clamps and no-ops at limit", () => {
   assert.deepEqual(afterMin, atMin);
 });
 
-test("applyTransformStyle", () => {
+test("applyTransformStyle is translate-only", () => {
   assert.equal(
     applyTransformStyle({ scale: 1.5, tx: 10, ty: -4 }),
-    "translate(10px, -4px) scale(1.5)"
+    "translate(10px, -4px)"
   );
+  assert.equal(
+    applyTransformStyle({ scale: 1, tx: 0, ty: 0 }),
+    "translate(0px, 0px)"
+  );
+});
+
+test("readSvgBaseSize prefers positive attributes", () => {
+  const svg = {
+    getAttribute(name) {
+      if (name === "width") return "200";
+      if (name === "height") return "100";
+      return null;
+    },
+  };
+  assert.deepEqual(readSvgBaseSize(svg), { width: 200, height: 100 });
+});
+
+test("readSvgBaseSize returns null when attributes missing or invalid", () => {
+  assert.equal(readSvgBaseSize(null), null);
+  assert.equal(
+    readSvgBaseSize({
+      getAttribute() {
+        return null;
+      },
+    }),
+    null
+  );
+  assert.equal(
+    readSvgBaseSize({
+      getAttribute(name) {
+        return name === "width" ? "0" : "10";
+      },
+    }),
+    null
+  );
+});
+
+test("svgSizeForScale multiplies base by clamped scale", () => {
+  assert.deepEqual(svgSizeForScale({ width: 200, height: 100 }, 2), {
+    width: 400,
+    height: 200,
+  });
+  assert.deepEqual(svgSizeForScale({ width: 200, height: 100 }, 99), {
+    width: 200 * SCALE_MAX,
+    height: 100 * SCALE_MAX,
+  });
+});
+
+test("applySvgZoomSize sets attributes when base present", () => {
+  const attrs = {};
+  const svg = {
+    setAttribute(name, value) {
+      attrs[name] = value;
+    },
+  };
+  applySvgZoomSize(svg, { width: 200, height: 100 }, 2);
+  assert.equal(attrs.width, "400");
+  assert.equal(attrs.height, "200");
+});
+
+test("applySvgZoomSize no-ops without svg or base", () => {
+  const attrs = {};
+  const svg = {
+    setAttribute(name, value) {
+      attrs[name] = value;
+    },
+  };
+  applySvgZoomSize(null, { width: 1, height: 1 }, 2);
+  applySvgZoomSize(svg, null, 2);
+  assert.deepEqual(attrs, {});
 });
 
 test("previewActionsVisible", () => {

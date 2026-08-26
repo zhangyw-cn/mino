@@ -43,15 +43,27 @@
   }
 
   function applyTransformStyle(state) {
-    return (
-      "translate(" +
-      state.tx +
-      "px, " +
-      state.ty +
-      "px) scale(" +
-      state.scale +
-      ")"
-    );
+    return "translate(" + state.tx + "px, " + state.ty + "px)";
+  }
+
+  function readSvgBaseSize(svg) {
+    if (!svg || typeof svg.getAttribute !== "function") return null;
+    const w = Number(svg.getAttribute("width"));
+    const h = Number(svg.getAttribute("height"));
+    if (!(w > 0) || !(h > 0)) return null;
+    return { width: w, height: h };
+  }
+
+  function svgSizeForScale(base, scale) {
+    const s = clampScale(scale);
+    return { width: base.width * s, height: base.height * s };
+  }
+
+  function applySvgZoomSize(svg, base, scale) {
+    if (!svg || !base) return;
+    const size = svgSizeForScale(base, scale);
+    svg.setAttribute("width", String(size.width));
+    svg.setAttribute("height", String(size.height));
   }
 
   function previewActionsVisible(mode, failed) {
@@ -370,6 +382,9 @@
     zoomAtPoint,
     applyTransformStyle,
     previewActionsVisible,
+    readSvgBaseSize,
+    svgSizeForScale,
+    applySvgZoomSize,
     createMermaidBlock,
     wheelZoomFactor,
     bindPreviewInteractions,
