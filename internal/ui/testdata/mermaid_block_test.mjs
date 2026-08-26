@@ -92,6 +92,41 @@ test("readSvgBaseSize prefers positive attributes", () => {
   assert.deepEqual(readSvgBaseSize(svg), { width: 200, height: 100 });
 });
 
+test("readSvgBaseSize accepts px-suffixed attributes", () => {
+  const svg = {
+    getAttribute(name) {
+      if (name === "width") return "200px";
+      if (name === "height") return "100px";
+      return null;
+    },
+  };
+  assert.deepEqual(readSvgBaseSize(svg), { width: 200, height: 100 });
+});
+
+test("readSvgBaseSize falls back to viewBox when width is percent", () => {
+  const svg = {
+    getAttribute(name) {
+      if (name === "width") return "100%";
+      if (name === "height") return null;
+      if (name === "viewBox") return "0 0 320 180";
+      return null;
+    },
+  };
+  assert.deepEqual(readSvgBaseSize(svg), { width: 320, height: 180 });
+});
+
+test("readSvgBaseSize falls back to getBBox", () => {
+  const svg = {
+    getAttribute() {
+      return null;
+    },
+    getBBox() {
+      return { width: 240, height: 120, x: 0, y: 0 };
+    },
+  };
+  assert.deepEqual(readSvgBaseSize(svg), { width: 240, height: 120 });
+});
+
 test("readSvgBaseSize returns null when attributes missing or invalid", () => {
   assert.equal(readSvgBaseSize(null), null);
   assert.equal(
@@ -123,9 +158,11 @@ test("svgSizeForScale multiplies base by clamped scale", () => {
   });
 });
 
-test("applySvgZoomSize sets attributes when base present", () => {
+test("applySvgZoomSize sets attributes and clears max-width", () => {
   const attrs = {};
+  const style = { maxWidth: "400px", maxHeight: "" };
   const svg = {
+    style,
     setAttribute(name, value) {
       attrs[name] = value;
     },
@@ -133,6 +170,8 @@ test("applySvgZoomSize sets attributes when base present", () => {
   applySvgZoomSize(svg, { width: 200, height: 100 }, 2);
   assert.equal(attrs.width, "400");
   assert.equal(attrs.height, "200");
+  assert.equal(style.maxWidth, "none");
+  assert.equal(style.maxHeight, "none");
 });
 
 test("applySvgZoomSize no-ops without svg or base", () => {

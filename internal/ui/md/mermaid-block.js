@@ -46,12 +46,40 @@
     return "translate(" + state.tx + "px, " + state.ty + "px)";
   }
 
+  function parsePositiveLength(value) {
+    if (value == null || value === "") return NaN;
+    const s = String(value).trim();
+    if (s.endsWith("%")) return NaN;
+    const n = parseFloat(s);
+    return n > 0 ? n : NaN;
+  }
+
   function readSvgBaseSize(svg) {
     if (!svg || typeof svg.getAttribute !== "function") return null;
-    const w = Number(svg.getAttribute("width"));
-    const h = Number(svg.getAttribute("height"));
-    if (!(w > 0) || !(h > 0)) return null;
-    return { width: w, height: h };
+    const w = parsePositiveLength(svg.getAttribute("width"));
+    const h = parsePositiveLength(svg.getAttribute("height"));
+    if (w > 0 && h > 0) return { width: w, height: h };
+
+    const vb = svg.getAttribute("viewBox");
+    if (vb) {
+      const parts = String(vb)
+        .trim()
+        .split(/[\s,]+/)
+        .map(Number);
+      if (parts.length === 4 && parts[2] > 0 && parts[3] > 0) {
+        return { width: parts[2], height: parts[3] };
+      }
+    }
+
+    if (typeof svg.getBBox === "function") {
+      try {
+        const box = svg.getBBox();
+        if (box && box.width > 0 && box.height > 0) {
+          return { width: box.width, height: box.height };
+        }
+      } catch (_) {}
+    }
+    return null;
   }
 
   function svgSizeForScale(base, scale) {
@@ -64,6 +92,10 @@
     const size = svgSizeForScale(base, scale);
     svg.setAttribute("width", String(size.width));
     svg.setAttribute("height", String(size.height));
+    if (svg.style) {
+      svg.style.maxWidth = "none";
+      svg.style.maxHeight = "none";
+    }
   }
 
   function previewActionsVisible(mode, failed) {
@@ -327,7 +359,11 @@
     }
 
     function cacheBaseSize() {
-      baseSize = readSvgBaseSize(getDiagramSvg());
+      const svg = getDiagramSvg();
+      baseSize = readSvgBaseSize(svg);
+      if (svg && baseSize) {
+        applySvgZoomSize(svg, baseSize, 1);
+      }
     }
 
     function syncChrome() {
