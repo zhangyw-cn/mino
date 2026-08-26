@@ -7,7 +7,6 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  const SCALE_MIN = 0.25;
   const SCALE_MAX = 4;
   const DEFAULT_MODE = "preview";
   const MODES = { code: true, preview: true };
@@ -19,31 +18,6 @@
 
   function modeClass(mode) {
     return "mode-" + normalizeMode(mode);
-  }
-
-  function clampScale(scale) {
-    const n = Number(scale);
-    if (!(n > 0) || n < SCALE_MIN) return SCALE_MIN;
-    if (n > SCALE_MAX) return SCALE_MAX;
-    return n;
-  }
-
-  function zoomAtPoint(state, point) {
-    const scale = state.scale;
-    const next = clampScale(scale * point.factor);
-    if (next === scale) {
-      return { scale: state.scale, tx: state.tx, ty: state.ty };
-    }
-    const ratio = next / scale;
-    return {
-      scale: next,
-      tx: point.x - (point.x - state.tx) * ratio,
-      ty: point.y - (point.y - state.ty) * ratio,
-    };
-  }
-
-  function applyTransformStyle(state) {
-    return "translate(" + state.tx + "px, " + state.ty + "px)";
   }
 
   function parsePositiveLength(value) {
@@ -272,22 +246,6 @@
     const height = viewport.clientHeight;
     if (!(width > 0) || !(height > 0)) return null;
     return { width, height };
-  }
-
-  function svgSizeForScale(base, scale) {
-    const s = clampScale(scale);
-    return { width: base.width * s, height: base.height * s };
-  }
-
-  function applySvgZoomSize(svg, base, scale) {
-    if (!svg || !base) return;
-    const size = svgSizeForScale(base, scale);
-    svg.setAttribute("width", String(size.width));
-    svg.setAttribute("height", String(size.height));
-    if (svg.style) {
-      svg.style.maxWidth = "none";
-      svg.style.maxHeight = "none";
-    }
   }
 
   function previewActionsVisible(mode, failed) {
@@ -714,14 +672,10 @@
   }
 
   return {
-    SCALE_MIN,
     SCALE_MAX,
     DEFAULT_MODE,
     normalizeMode,
     modeClass,
-    clampScale,
-    zoomAtPoint,
-    applyTransformStyle,
     previewActionsVisible,
     previewActionsHtml,
     readSvgBaseSize,
@@ -742,8 +696,6 @@
     restoreSvgAttrs,
     applyCamera,
     measureStage,
-    svgSizeForScale,
-    applySvgZoomSize,
     createMermaidBlock,
     wheelZoomFactor,
     bindPreviewInteractions,
