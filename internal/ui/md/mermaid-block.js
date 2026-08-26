@@ -195,6 +195,18 @@
     return "lost";
   }
 
+  function handleFullscreenChromeAction(action, api) {
+    if (action === "fs-reset") {
+      api.resetZoom();
+      return "reset";
+    }
+    if (action === "fs-close") {
+      api.close();
+      return "close";
+    }
+    return null;
+  }
+
   function ensureOverlay() {
     let el = document.querySelector(".mermaid-fs-overlay");
     if (el) return el;
@@ -206,6 +218,7 @@
     el.setAttribute("aria-label", "Mermaid fullscreen");
     el.innerHTML =
       '<div class="mermaid-fs-chrome">' +
+      '<button type="button" data-action="fs-reset" aria-label="Reset zoom">Reset</button>' +
       '<button type="button" data-action="fs-close" aria-label="Close">Close</button>' +
       "</div>" +
       '<div class="mermaid-fs-stage"></div>';
@@ -213,8 +226,18 @@
     el.addEventListener("click", (ev) => {
       if (ev.target === el) closeMermaidFullscreen();
     });
-    el.querySelector('[data-action="fs-close"]').addEventListener("click", () => {
-      closeMermaidFullscreen();
+    el.querySelector(".mermaid-fs-chrome").addEventListener("click", (ev) => {
+      const btn = ev.target.closest("[data-action]");
+      if (!btn) return;
+      const action = btn.getAttribute("data-action");
+      if (!fsState) {
+        if (action === "fs-close") closeMermaidFullscreen();
+        return;
+      }
+      handleFullscreenChromeAction(action, {
+        resetZoom: () => fsState.inst.resetZoom(),
+        close: closeMermaidFullscreen,
+      });
     });
     return el;
   }
@@ -399,6 +422,7 @@
     bindPreviewInteractions,
     withOverflowLocked,
     restoreFullscreenViewport,
+    handleFullscreenChromeAction,
     openMermaidFullscreen,
     closeMermaidFullscreen,
   };

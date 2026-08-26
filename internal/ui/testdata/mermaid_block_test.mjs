@@ -15,6 +15,7 @@ const {
   wheelZoomFactor,
   withOverflowLocked,
   restoreFullscreenViewport,
+  handleFullscreenChromeAction,
   readSvgBaseSize,
   svgSizeForScale,
   applySvgZoomSize,
@@ -202,4 +203,22 @@ test("restoreFullscreenViewport lost without viewport or parent", () => {
     restoreFullscreenViewport({ parentNode: null }, { id: "vp" }, null),
     "lost"
   );
+});
+
+test("handleFullscreenChromeAction reset does not close", () => {
+  const calls = [];
+  const api = {
+    resetZoom() {
+      calls.push("reset");
+    },
+    close() {
+      calls.push("close");
+    },
+  };
+  assert.equal(handleFullscreenChromeAction("fs-reset", api), "reset");
+  assert.deepEqual(calls, ["reset"]);
+  assert.equal(handleFullscreenChromeAction("fs-close", api), "close");
+  assert.deepEqual(calls, ["reset", "close"]);
+  assert.equal(handleFullscreenChromeAction("other", api), null);
+  assert.deepEqual(calls, ["reset", "close"]);
 });
