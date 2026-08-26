@@ -224,6 +224,7 @@
       for (const inst of instances) {
         try {
           await mermaid.run({ nodes: [inst.diagramEl] });
+          inst.cacheBaseSize();
         } catch (_) {
           inst.setRenderFailed();
         }

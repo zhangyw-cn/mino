@@ -223,10 +223,6 @@ body {
   display: none;
 }
 
-.mermaid-block.mode-split .mermaid-panes {
-  grid-template-columns: 1fr 1fr;
-}
-
 .mermaid-block pre.mermaid-source {
   margin: 0;
   padding: 12px;
@@ -244,10 +240,6 @@ body {
   position: relative;
   min-height: 160px;
   background: #1e1e1e;
-}
-
-.mermaid-block.mode-split .mermaid-viewport {
-  overflow: auto;
 }
 
 .mermaid-zoom-target {
@@ -346,12 +338,6 @@ body {
 
 .mermaid-fs-placeholder {
   display: none;
-}
-
-@media (max-width: 959px) {
-  .mermaid-block.mode-split .mermaid-panes {
-    grid-template-columns: 1fr;
-  }
 }
 
 .error,

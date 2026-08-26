@@ -271,7 +271,6 @@
       '<div class="mermaid-toolbar" role="toolbar" aria-label="Mermaid view">' +
       '<div class="mermaid-mode-group">' +
       '<button type="button" data-mode="code">Code</button>' +
-      '<button type="button" data-mode="split">Split</button>' +
       '<button type="button" data-mode="preview" aria-pressed="true">Preview</button>' +
       "</div>" +
       '<div class="mermaid-preview-actions" hidden>' +
@@ -297,7 +296,16 @@
     let mode = DEFAULT_MODE;
     let failed = false;
     let zoom = { scale: 1, tx: 0, ty: 0 };
+    let baseSize = null;
     let inst = null;
+
+    function getDiagramSvg() {
+      return diagramEl.querySelector("svg");
+    }
+
+    function cacheBaseSize() {
+      baseSize = readSvgBaseSize(getDiagramSvg());
+    }
 
     function syncChrome() {
       root.dataset.mode = mode;
@@ -316,8 +324,7 @@
       mode = normalizeMode(next);
       if (mode !== "preview") {
         if (fsState && fsState.inst === inst) closeMermaidFullscreen();
-        zoom = { scale: 1, tx: 0, ty: 0 };
-        zoomTarget.style.transform = applyTransformStyle(zoom);
+        applyZoomState({ scale: 1, tx: 0, ty: 0 });
       }
       syncChrome();
     }
@@ -337,6 +344,7 @@
         ty: state.ty,
       };
       zoomTarget.style.transform = applyTransformStyle(zoom);
+      applySvgZoomSize(getDiagramSvg(), baseSize, zoom.scale);
       const transforming =
         zoom.scale !== 1 || zoom.tx !== 0 || zoom.ty !== 0;
       zoomTarget.classList.toggle("is-transforming", transforming);
@@ -367,6 +375,7 @@
       applyZoomState,
       getZoomState: () => ({ scale: zoom.scale, tx: zoom.tx, ty: zoom.ty }),
       isFailed: () => failed,
+      cacheBaseSize,
     };
     bindPreviewInteractions(inst);
     return inst;
