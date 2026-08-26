@@ -19,6 +19,19 @@ const {
   readSvgBaseSize,
   svgSizeForScale,
   applySvgZoomSize,
+  parseViewBox,
+  userBoxFromSvgAttrs,
+  naturalScale,
+  fitScale,
+  cameraScaleRange,
+  openingCamera,
+  cameraViewBox,
+  viewBoxAttr,
+  zoomCameraAtNorm,
+  panCamera,
+  resizeCamera,
+  pointerToNorm,
+  canStartCamera,
 } = createRequire(import.meta.url)("../md/mermaid-block.js");
 
 test("normalizeMode defaults unknown to preview", () => {
@@ -260,4 +273,158 @@ test("handleFullscreenChromeAction reset does not close", () => {
   assert.deepEqual(calls, ["reset", "close"]);
   assert.equal(handleFullscreenChromeAction("other", api), null);
   assert.deepEqual(calls, ["reset", "close"]);
+});
+
+test("parseViewBox reads space or comma viewBox", () => {
+  assert.deepEqual(parseViewBox("0 0 800 600"), { x: 0, y: 0, w: 800, h: 600 });
+  assert.deepEqual(parseViewBox("10,20,100,50"), { x: 10, y: 20, w: 100, h: 50 });
+  assert.equal(parseViewBox(""), null);
+  assert.equal(parseViewBox("0 0 0 10"), null);
+});
+
+test("userBoxFromSvgAttrs prefers viewBox then base", () => {
+  assert.deepEqual(userBoxFromSvgAttrs("5 6 40 20", { width: 1, height: 1 }), {
+    x: 5,
+    y: 6,
+    w: 40,
+    h: 20,
+  });
+  assert.deepEqual(userBoxFromSvgAttrs(null, { width: 80, height: 40 }), {
+    x: 0,
+    y: 0,
+    w: 80,
+    h: 40,
+  });
+  assert.equal(userBoxFromSvgAttrs(null, null), null);
+});
+
+test("naturalScale is base width over user width", () => {
+  assert.equal(naturalScale({ width: 400, height: 200 }, { x: 0, y: 0, w: 800, h: 400 }), 0.5);
+  assert.ok(Number.isNaN(naturalScale({ width: 400, height: 200 }, { x: 0, y: 0, w: 0, h: 10 })));
+});
+
+test("fitScale never exceeds 1", () => {
+  assert.equal(
+    fitScale({ width: 100, height: 50 }, { width: 400, height: 300 }),
+    1
+  );
+  assert.equal(
+    fitScale({ width: 800, height: 600 }, { width: 400, height: 300 }),
+    0.5
+  );
+  assert.equal(
+    fitScale({ width: 800, height: 200 }, { width: 400, height: 300 }),
+    0.5
+  );
+});
+
+test("openingCamera contains large diagram and does not upscale small", () => {
+  const small = openingCamera(
+    { x: 0, y: 0, w: 100, h: 50 },
+    { width: 100, height: 50 },
+    { width: 400, height: 300 }
+  );
+  assert.equal(small.scale, 1);
+  const smallBox = cameraViewBox(small, { width: 400, height: 300 });
+  assert.equal(small.vx + smallBox.w / 2, 50);
+  assert.equal(small.vy + smallBox.h / 2, 25);
+
+  const large = openingCamera(
+    { x: 0, y: 0, w: 800, h: 600 },
+    { width: 800, height: 600 },
+    { width: 400, height: 300 }
+  );
+  assert.equal(large.scale, 0.5);
+  assert.equal(large.vx, 0);
+  assert.equal(large.vy, 0);
+});
+
+test("zoomCameraAtNorm keeps user point under nx,ny", () => {
+  const stage = { width: 200, height: 100 };
+  const camera = { scale: 1, vx: 0, vy: 0 };
+  const nx = 0.25;
+  const ny = 0.5;
+  const userX = camera.vx + nx * (stage.width / camera.scale);
+  const userY = camera.vy + ny * (stage.height / camera.scale);
+  const after = zoomCameraAtNorm(camera, { nx, ny, factor: 2 }, stage, 0.25, 4);
+  assert.equal(after.scale, 2);
+  const box = cameraViewBox(after, stage);
+  assert.equal(after.vx + nx * box.w, userX);
+  assert.equal(after.vy + ny * box.h, userY);
+});
+
+test("zoomCameraAtNorm no-ops at clamp limits", () => {
+  const stage = { width: 200, height: 100 };
+  const atMax = { scale: 4, vx: 1, vy: 2 };
+  assert.deepEqual(
+    zoomCameraAtNorm(atMax, { nx: 0.5, ny: 0.5, factor: 2 }, stage, 0.5, 4),
+    atMax
+  );
+  const atMin = { scale: 0.5, vx: 3, vy: 4 };
+  assert.deepEqual(
+    zoomCameraAtNorm(atMin, { nx: 0.5, ny: 0.5, factor: 0.5 }, stage, 0.5, 4),
+    atMin
+  );
+});
+
+test("panCamera shifts frustum by dx/scale", () => {
+  const after = panCamera({ scale: 2, vx: 10, vy: 20 }, 8, -4);
+  assert.equal(after.scale, 2);
+  assert.equal(after.vx, 10 - 8 / 2);
+  assert.equal(after.vy, 20 - -4 / 2);
+});
+
+test("resizeCamera follows contain when shrinking while contained", () => {
+  const userBox = { x: 0, y: 0, w: 800, h: 600 };
+  const base = { width: 800, height: 600 };
+  const prev = { width: 800, height: 600 };
+  const camera = openingCamera(userBox, base, prev);
+  const next = { width: 400, height: 300 };
+  const after = resizeCamera(camera, userBox, base, prev, next);
+  assert.deepEqual(after, openingCamera(userBox, base, next));
+  assert.equal(after.scale, 0.5);
+});
+
+test("resizeCamera keeps zoomed-in center when still above contain", () => {
+  const userBox = { x: 0, y: 0, w: 800, h: 600 };
+  const base = { width: 800, height: 600 };
+  const prev = { width: 400, height: 300 };
+  const camera = { scale: 2, vx: 100, vy: 50 };
+  const next = { width: 360, height: 270 };
+  const after = resizeCamera(camera, userBox, base, prev, next);
+  assert.equal(after.scale, 2);
+  const prevBox = cameraViewBox(camera, prev);
+  const nextBox = cameraViewBox(after, next);
+  assert.equal(after.vx + nextBox.w / 2, camera.vx + prevBox.w / 2);
+  assert.equal(after.vy + nextBox.h / 2, camera.vy + prevBox.h / 2);
+});
+
+test("pointerToNorm clamps to 0..1", () => {
+  const rect = { left: 10, top: 20, width: 100, height: 50 };
+  assert.deepEqual(pointerToNorm(10, 20, rect), { nx: 0, ny: 0 });
+  assert.deepEqual(pointerToNorm(60, 45, rect), { nx: 0.5, ny: 0.5 });
+  assert.deepEqual(pointerToNorm(-8, 999, rect), { nx: 0, ny: 1 });
+});
+
+test("canStartCamera requires measurable sizes", () => {
+  const base = { width: 100, height: 50 };
+  const userBox = { x: 0, y: 0, w: 100, h: 50 };
+  const stage = { width: 200, height: 100 };
+  assert.equal(canStartCamera(base, userBox, stage), true);
+  assert.equal(canStartCamera(null, userBox, stage), false);
+  assert.equal(canStartCamera(base, userBox, { width: 0, height: 100 }), false);
+});
+
+test("viewBoxAttr joins numbers", () => {
+  assert.equal(viewBoxAttr({ x: 1, y: 2, w: 3, h: 4 }), "1 2 3 4");
+});
+
+test("cameraScaleRange uses contain min and 4x natural max", () => {
+  const range = cameraScaleRange(
+    { width: 800, height: 600 },
+    { x: 0, y: 0, w: 800, h: 600 },
+    { width: 400, height: 300 }
+  );
+  assert.equal(range.min, 0.5);
+  assert.equal(range.max, 4);
 });

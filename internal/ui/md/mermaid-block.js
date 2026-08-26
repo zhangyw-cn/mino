@@ -82,6 +82,141 @@
     return null;
   }
 
+  function parseViewBox(value) {
+    if (value == null || value === "") return null;
+    const parts = String(value)
+      .trim()
+      .split(/[\s,]+/)
+      .map(Number);
+    if (parts.length !== 4) return null;
+    const x = parts[0];
+    const y = parts[1];
+    const w = parts[2];
+    const h = parts[3];
+    if (![x, y, w, h].every((n) => Number.isFinite(n)) || !(w > 0) || !(h > 0)) {
+      return null;
+    }
+    return { x, y, w, h };
+  }
+
+  function userBoxFromSvgAttrs(viewBoxStr, base) {
+    const vb = parseViewBox(viewBoxStr);
+    if (vb) return vb;
+    if (base && base.width > 0 && base.height > 0) {
+      return { x: 0, y: 0, w: base.width, h: base.height };
+    }
+    return null;
+  }
+
+  function naturalScale(base, userBox) {
+    if (!base || !userBox || !(userBox.w > 0) || !(base.width > 0)) return NaN;
+    return base.width / userBox.w;
+  }
+
+  function fitScale(base, stage) {
+    if (
+      !base ||
+      !stage ||
+      !(base.width > 0) ||
+      !(base.height > 0) ||
+      !(stage.width > 0) ||
+      !(stage.height > 0)
+    ) {
+      return NaN;
+    }
+    return Math.min(1, stage.width / base.width, stage.height / base.height);
+  }
+
+  function cameraScaleRange(base, userBox, stage) {
+    const nat = naturalScale(base, userBox);
+    const fit = fitScale(base, stage);
+    if (!(nat > 0) || !(fit > 0)) return null;
+    return { min: fit * nat, max: SCALE_MAX * nat };
+  }
+
+  function canStartCamera(base, userBox, stage) {
+    return cameraScaleRange(base, userBox, stage) != null;
+  }
+
+  function cameraViewBox(camera, stage) {
+    return {
+      x: camera.vx,
+      y: camera.vy,
+      w: stage.width / camera.scale,
+      h: stage.height / camera.scale,
+    };
+  }
+
+  function viewBoxAttr(box) {
+    return box.x + " " + box.y + " " + box.w + " " + box.h;
+  }
+
+  function openingCamera(userBox, base, stage) {
+    const range = cameraScaleRange(base, userBox, stage);
+    if (!range) return null;
+    const scale = range.min;
+    const vw = stage.width / scale;
+    const vh = stage.height / scale;
+    return {
+      scale,
+      vx: userBox.x + userBox.w / 2 - vw / 2,
+      vy: userBox.y + userBox.h / 2 - vh / 2,
+    };
+  }
+
+  function zoomCameraAtNorm(camera, point, stage, scaleMin, scaleMax) {
+    const scale = camera.scale;
+    let next = scale * point.factor;
+    if (next < scaleMin) next = scaleMin;
+    if (next > scaleMax) next = scaleMax;
+    if (next === scale) {
+      return { scale: camera.scale, vx: camera.vx, vy: camera.vy };
+    }
+    const nx = Math.min(1, Math.max(0, point.nx));
+    const ny = Math.min(1, Math.max(0, point.ny));
+    const vw = stage.width / scale;
+    const vh = stage.height / scale;
+    const userX = camera.vx + nx * vw;
+    const userY = camera.vy + ny * vh;
+    const vw2 = stage.width / next;
+    const vh2 = stage.height / next;
+    return { scale: next, vx: userX - nx * vw2, vy: userY - ny * vh2 };
+  }
+
+  function panCamera(camera, dx, dy) {
+    return {
+      scale: camera.scale,
+      vx: camera.vx - dx / camera.scale,
+      vy: camera.vy - dy / camera.scale,
+    };
+  }
+
+  function resizeCamera(camera, userBox, base, prevStage, nextStage) {
+    const nextRange = cameraScaleRange(base, userBox, nextStage);
+    if (!nextRange || !camera) return null;
+    const prevRange = cameraScaleRange(base, userBox, prevStage);
+    const atContain = prevRange && camera.scale <= prevRange.min;
+    if (atContain || camera.scale < nextRange.min) {
+      return openingCamera(userBox, base, nextStage);
+    }
+    let scale = camera.scale;
+    if (scale > nextRange.max) scale = nextRange.max;
+    const cx = camera.vx + prevStage.width / (2 * camera.scale);
+    const cy = camera.vy + prevStage.height / (2 * camera.scale);
+    const vw = nextStage.width / scale;
+    const vh = nextStage.height / scale;
+    return { scale, vx: cx - vw / 2, vy: cy - vh / 2 };
+  }
+
+  function pointerToNorm(clientX, clientY, rect) {
+    if (!rect || !(rect.width > 0) || !(rect.height > 0)) {
+      return { nx: 0.5, ny: 0.5 };
+    }
+    const nx = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+    const ny = Math.min(1, Math.max(0, (clientY - rect.top) / rect.height));
+    return { nx, ny };
+  }
+
   function svgSizeForScale(base, scale) {
     const s = clampScale(scale);
     return { width: base.width * s, height: base.height * s };
@@ -451,6 +586,19 @@
     applyTransformStyle,
     previewActionsVisible,
     readSvgBaseSize,
+    parseViewBox,
+    userBoxFromSvgAttrs,
+    naturalScale,
+    fitScale,
+    cameraScaleRange,
+    canStartCamera,
+    cameraViewBox,
+    viewBoxAttr,
+    openingCamera,
+    zoomCameraAtNorm,
+    panCamera,
+    resizeCamera,
+    pointerToNorm,
     svgSizeForScale,
     applySvgZoomSize,
     createMermaidBlock,
