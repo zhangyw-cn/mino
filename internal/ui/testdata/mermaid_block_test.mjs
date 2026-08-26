@@ -12,6 +12,7 @@ const {
   zoomAtPoint,
   applyTransformStyle,
   previewActionsVisible,
+  previewActionsHtml,
   wheelZoomFactor,
   withOverflowLocked,
   restoreFullscreenViewport,
@@ -208,6 +209,14 @@ test("previewActionsVisible", () => {
   assert.equal(previewActionsVisible("code", false), false);
   assert.equal(previewActionsVisible("split", false), false);
   assert.equal(previewActionsVisible("preview", true), false);
+});
+
+test("previewActionsHtml is fullscreen only", () => {
+  const html = previewActionsHtml();
+  assert.match(html, /data-action="fullscreen"/);
+  assert.doesNotMatch(html, /data-action="zoom-in"/);
+  assert.doesNotMatch(html, /data-action="zoom-out"/);
+  assert.doesNotMatch(html, /data-action="zoom-reset"/);
 });
 
 test("wheelZoomFactor", () => {

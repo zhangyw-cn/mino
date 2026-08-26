@@ -267,22 +267,6 @@ body {
   height: auto;
 }
 
-.mermaid-block.mode-preview .mermaid-diagram svg,
-.mermaid-fs-stage .mermaid-diagram svg {
-  max-width: none;
-}
-
-.mermaid-block.mode-preview:not(.is-failed) .mermaid-viewport {
-  cursor: grab;
-  touch-action: none;
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-.mermaid-block.mode-preview:not(.is-failed) .mermaid-viewport.is-panning {
-  cursor: grabbing;
-}
-
 .mermaid-fs-overlay {
   position: fixed;
   inset: 0;
@@ -327,14 +311,57 @@ body {
   width: 100%;
   height: 100%;
   min-height: 100%;
+}
+
+.mermaid-fs-stage .mermaid-viewport.is-camera {
   cursor: grab;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
 }
 
-.mermaid-fs-stage .mermaid-viewport.is-panning {
+.mermaid-fs-stage .mermaid-viewport.is-camera.is-panning {
   cursor: grabbing;
+}
+
+.mermaid-fs-stage .mermaid-zoom-target,
+.mermaid-fs-stage .mermaid-diagram {
+  width: 100%;
+  height: 100%;
+}
+
+.mermaid-fs-stage .mermaid-diagram {
+  padding: 0;
+  text-align: left;
+}
+
+.mermaid-fs-stage .mermaid-diagram svg {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  display: block;
+}
+
+.mermaid-fs-stage .mermaid-viewport.is-fs-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mermaid-fs-stage .mermaid-viewport.is-fs-fallback .mermaid-zoom-target,
+.mermaid-fs-stage .mermaid-viewport.is-fs-fallback .mermaid-diagram {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.mermaid-fs-stage .mermaid-viewport.is-fs-fallback .mermaid-diagram svg {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
 }
 
 .mermaid-fs-placeholder {

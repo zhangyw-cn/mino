@@ -294,6 +294,12 @@
     return String(mode || "").toLowerCase() === "preview" && !failed;
   }
 
+  function previewActionsHtml() {
+    return (
+      '<button type="button" data-action="fullscreen" aria-label="Fullscreen">Fullscreen</button>'
+    );
+  }
+
   function wheelZoomFactor(deltaY) {
     const d = Number(deltaY);
     if (!(d < 0) && !(d > 0)) return 1;
@@ -304,12 +310,17 @@
     const viewport = inst.getViewport();
     const root = inst.root;
 
-    function canZoom() {
-      return inst.getMode() === "preview" && !inst.isFailed();
+    function canUseCamera() {
+      return (
+        inst.getMode() === "preview" &&
+        !inst.isFailed() &&
+        typeof inst.isFullscreen === "function" &&
+        inst.isFullscreen()
+      );
     }
 
     function zoomBy(factor, clientX, clientY) {
-      if (!canZoom() || factor === 1) return;
+      if (!canUseCamera() || factor === 1) return;
       const rect = viewport.getBoundingClientRect();
       const x = clientX - rect.left;
       const y = clientY - rect.top;
@@ -320,7 +331,7 @@
     viewport.addEventListener(
       "wheel",
       (ev) => {
-        if (!canZoom()) return;
+        if (!canUseCamera()) return;
         const factor = wheelZoomFactor(ev.deltaY);
         if (factor === 1) return;
         ev.preventDefault();
@@ -345,7 +356,7 @@
     }
 
     viewport.addEventListener("pointerdown", (ev) => {
-      if (!canZoom() || ev.button !== 0) return;
+      if (!canUseCamera() || ev.button !== 0) return;
       ev.preventDefault();
       dragging = true;
       lastX = ev.clientX;
@@ -356,7 +367,7 @@
 
     viewport.addEventListener("pointermove", (ev) => {
       if (!dragging) return;
-      if (!canZoom()) {
+      if (!canUseCamera()) {
         endDrag(ev);
         return;
       }
@@ -376,18 +387,8 @@
       const btn = ev.target.closest("[data-action]");
       if (!btn) return;
       const action = btn.getAttribute("data-action");
-      if (action === "zoom-reset") {
-        inst.resetZoom();
-        return;
-      }
       if (action === "fullscreen") {
         openMermaidFullscreen(inst);
-        return;
-      }
-      if (action === "zoom-in" || action === "zoom-out") {
-        const rect = viewport.getBoundingClientRect();
-        const factor = action === "zoom-in" ? 1.1 : 1 / 1.1;
-        zoomBy(factor, rect.left + rect.width / 2, rect.top + rect.height / 2);
       }
     });
   }
@@ -521,10 +522,7 @@
       '<button type="button" data-mode="preview" aria-pressed="true">Preview</button>' +
       "</div>" +
       '<div class="mermaid-preview-actions" hidden>' +
-      '<button type="button" data-action="zoom-out" aria-label="Zoom out">−</button>' +
-      '<button type="button" data-action="zoom-in" aria-label="Zoom in">+</button>' +
-      '<button type="button" data-action="zoom-reset" aria-label="Reset zoom">Reset</button>' +
-      '<button type="button" data-action="fullscreen" aria-label="Fullscreen">Fullscreen</button>' +
+      previewActionsHtml() +
       "</div></div>" +
       '<div class="mermaid-panes">' +
       '<pre class="mermaid-source"><code></code></pre>' +
@@ -544,6 +542,8 @@
     let failed = false;
     let zoom = { scale: 1, tx: 0, ty: 0 };
     let baseSize = null;
+    let userBox = null;
+    let originalPresentation = null;
     let inst = null;
 
     function getDiagramSvg() {
@@ -553,9 +553,8 @@
     function cacheBaseSize() {
       const svg = getDiagramSvg();
       baseSize = readSvgBaseSize(svg);
-      if (svg && baseSize) {
-        applySvgZoomSize(svg, baseSize, 1);
-      }
+      userBox = userBoxFromSvgAttrs(svg && svg.getAttribute("viewBox"), baseSize);
+      originalPresentation = captureSvgPresentation(svg);
     }
 
     function syncChrome() {
@@ -627,6 +626,7 @@
       getZoomState: () => ({ scale: zoom.scale, tx: zoom.tx, ty: zoom.ty }),
       isFailed: () => failed,
       cacheBaseSize,
+      isFullscreen: () => !!(fsState && fsState.inst === inst),
     };
     bindPreviewInteractions(inst);
     return inst;
@@ -642,6 +642,7 @@
     zoomAtPoint,
     applyTransformStyle,
     previewActionsVisible,
+    previewActionsHtml,
     readSvgBaseSize,
     parseViewBox,
     userBoxFromSvgAttrs,
