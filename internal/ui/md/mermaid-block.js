@@ -217,6 +217,63 @@
     return { nx, ny };
   }
 
+  function captureSvgPresentation(svg) {
+    if (!svg || typeof svg.getAttribute !== "function") return null;
+    const style = svg.style || {};
+    return {
+      viewBox: svg.getAttribute("viewBox"),
+      width: svg.getAttribute("width"),
+      height: svg.getAttribute("height"),
+      preserveAspectRatio: svg.getAttribute("preserveAspectRatio"),
+      styleWidth: style.width || "",
+      styleHeight: style.height || "",
+      styleMaxWidth: style.maxWidth || "",
+      styleMaxHeight: style.maxHeight || "",
+    };
+  }
+
+  function restoreAttr(el, name, value) {
+    if (value == null) el.removeAttribute(name);
+    else el.setAttribute(name, value);
+  }
+
+  function restoreSvgAttrs(svg, captured) {
+    if (!svg || !captured) return;
+    restoreAttr(svg, "viewBox", captured.viewBox);
+    restoreAttr(svg, "width", captured.width);
+    restoreAttr(svg, "height", captured.height);
+    restoreAttr(svg, "preserveAspectRatio", captured.preserveAspectRatio);
+    if (svg.style) {
+      svg.style.width = captured.styleWidth || "";
+      svg.style.height = captured.styleHeight || "";
+      svg.style.maxWidth = captured.styleMaxWidth || "";
+      svg.style.maxHeight = captured.styleMaxHeight || "";
+    }
+  }
+
+  function applyCamera(svg, camera, stage) {
+    if (!svg || !camera || !stage) return;
+    const box = cameraViewBox(camera, stage);
+    svg.setAttribute("viewBox", viewBoxAttr(box));
+    svg.setAttribute("width", "100%");
+    svg.setAttribute("height", "100%");
+    svg.setAttribute("preserveAspectRatio", "none");
+    if (svg.style) {
+      svg.style.width = "100%";
+      svg.style.height = "100%";
+      svg.style.maxWidth = "none";
+      svg.style.maxHeight = "none";
+    }
+  }
+
+  function measureStage(viewport) {
+    if (!viewport) return null;
+    const width = viewport.clientWidth;
+    const height = viewport.clientHeight;
+    if (!(width > 0) || !(height > 0)) return null;
+    return { width, height };
+  }
+
   function svgSizeForScale(base, scale) {
     const s = clampScale(scale);
     return { width: base.width * s, height: base.height * s };
@@ -599,6 +656,10 @@
     panCamera,
     resizeCamera,
     pointerToNorm,
+    captureSvgPresentation,
+    restoreSvgAttrs,
+    applyCamera,
+    measureStage,
     svgSizeForScale,
     applySvgZoomSize,
     createMermaidBlock,

@@ -32,6 +32,10 @@ const {
   resizeCamera,
   pointerToNorm,
   canStartCamera,
+  captureSvgPresentation,
+  restoreSvgAttrs,
+  applyCamera,
+  measureStage,
 } = createRequire(import.meta.url)("../md/mermaid-block.js");
 
 test("normalizeMode defaults unknown to preview", () => {
@@ -427,4 +431,91 @@ test("cameraScaleRange uses contain min and 4x natural max", () => {
   );
   assert.equal(range.min, 0.5);
   assert.equal(range.max, 4);
+});
+
+function fakeSvg(init) {
+  const attrs = Object.assign(
+    { viewBox: "0 0 80 40", width: "80", height: "40", preserveAspectRatio: "xMidYMid meet" },
+    init.attrs || {}
+  );
+  const style = Object.assign(
+    { width: "", height: "", maxWidth: "", maxHeight: "" },
+    init.style || {}
+  );
+  return {
+    style,
+    getAttribute(name) {
+      return Object.prototype.hasOwnProperty.call(attrs, name) ? attrs[name] : null;
+    },
+    setAttribute(name, value) {
+      attrs[name] = value;
+    },
+    removeAttribute(name) {
+      delete attrs[name];
+    },
+    _attrs: attrs,
+  };
+}
+
+test("captureSvgPresentation snapshots attrs and style", () => {
+  const svg = fakeSvg({
+    style: { width: "10px", height: "", maxWidth: "100%", maxHeight: "" },
+  });
+  const cap = captureSvgPresentation(svg);
+  assert.equal(cap.viewBox, "0 0 80 40");
+  assert.equal(cap.width, "80");
+  assert.equal(cap.height, "40");
+  assert.equal(cap.preserveAspectRatio, "xMidYMid meet");
+  assert.equal(cap.styleWidth, "10px");
+  assert.equal(cap.styleMaxWidth, "100%");
+  assert.equal(captureSvgPresentation(null), null);
+});
+
+test("restoreSvgAttrs round-trips and removes null attrs", () => {
+  const svg = fakeSvg({ attrs: { viewBox: "1 2 3 4", width: "100%", height: "100%" } });
+  restoreSvgAttrs(svg, {
+    viewBox: "0 0 80 40",
+    width: "80",
+    height: "40",
+    preserveAspectRatio: null,
+    styleWidth: "",
+    styleHeight: "",
+    styleMaxWidth: "",
+    styleMaxHeight: "",
+  });
+  assert.equal(svg.getAttribute("viewBox"), "0 0 80 40");
+  assert.equal(svg.getAttribute("width"), "80");
+  assert.equal(svg.getAttribute("preserveAspectRatio"), null);
+  assert.equal(svg.style.width, "");
+});
+
+test("applyCamera writes viewBox fill attrs not transform", () => {
+  const svg = fakeSvg({});
+  svg.style.transform = "";
+  applyCamera(svg, { scale: 1, vx: -10, vy: -20 }, { width: 200, height: 100 });
+  assert.equal(svg.getAttribute("viewBox"), "-10 -20 200 100");
+  assert.equal(svg.getAttribute("width"), "100%");
+  assert.equal(svg.getAttribute("height"), "100%");
+  assert.equal(svg.getAttribute("preserveAspectRatio"), "none");
+  assert.equal(svg.style.width, "100%");
+  assert.equal(svg.style.height, "100%");
+  assert.equal(svg.style.maxWidth, "none");
+  assert.equal(svg.style.maxHeight, "none");
+  assert.equal(svg.style.transform, "");
+});
+
+test("applyCamera no-ops without svg or camera", () => {
+  const svg = fakeSvg({});
+  applyCamera(null, { scale: 1, vx: 0, vy: 0 }, { width: 1, height: 1 });
+  applyCamera(svg, null, { width: 1, height: 1 });
+  assert.equal(svg.getAttribute("viewBox"), "0 0 80 40");
+});
+
+test("measureStage requires positive client box", () => {
+  assert.deepEqual(measureStage({ clientWidth: 120, clientHeight: 80 }), {
+    width: 120,
+    height: 80,
+  });
+  assert.equal(measureStage({ clientWidth: 0, clientHeight: 80 }), null);
+  assert.equal(measureStage(null), null);
 });
