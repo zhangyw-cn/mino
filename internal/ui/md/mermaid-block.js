@@ -315,17 +315,26 @@
         inst.getMode() === "preview" &&
         !inst.isFailed() &&
         typeof inst.isFullscreen === "function" &&
-        inst.isFullscreen()
+        inst.isFullscreen() &&
+        inst.getCameraState() != null
       );
+    }
+
+    function currentStage() {
+      return measureStage(viewport) || (fsState && fsState.inst === inst && fsState.stage) || null;
     }
 
     function zoomBy(factor, clientX, clientY) {
       if (!canUseCamera() || factor === 1) return;
-      const rect = viewport.getBoundingClientRect();
-      const x = clientX - rect.left;
-      const y = clientY - rect.top;
-      const next = zoomAtPoint(inst.getZoomState(), { x, y, factor });
-      inst.applyZoomState(next);
+      const svg = inst.getDiagramSvg();
+      const stage = currentStage();
+      const cam = inst.getCameraState();
+      const range = cameraScaleRange(inst.getBaseSize(), inst.getUserBox(), stage);
+      if (!svg || !stage || !cam || !range) return;
+      const rect = svg.getBoundingClientRect();
+      const { nx, ny } = pointerToNorm(clientX, clientY, rect);
+      const next = zoomCameraAtNorm(cam, { nx, ny, factor }, stage, range.min, range.max);
+      inst.applyCameraState(next, stage);
     }
 
     viewport.addEventListener(
@@ -375,8 +384,13 @@
       const dy = ev.clientY - lastY;
       lastX = ev.clientX;
       lastY = ev.clientY;
-      const z = inst.getZoomState();
-      inst.applyZoomState({ scale: z.scale, tx: z.tx + dx, ty: z.ty + dy });
+      const stage = currentStage();
+      const cam = inst.getCameraState();
+      if (!stage || !cam) {
+        endDrag(ev);
+        return;
+      }
+      inst.applyCameraState(panCamera(cam, dx, dy), stage);
     });
 
     viewport.addEventListener("pointerup", endDrag);
@@ -404,7 +418,7 @@
     };
   }
 
-  let fsState = null; // { inst, unlock, onKey, placeholder, viewport, inertEl }
+  let fsState = null; // { inst, unlock, onKey, placeholder, viewport, inertEl, stage, onResize }
 
   /** Restore viewport after fullscreen; used by close and unit-tested. */
   function restoreFullscreenViewport(placeholder, viewport, panesEl) {
@@ -473,11 +487,14 @@
     document.removeEventListener("keydown", onKey);
     unlock();
     if (inertEl) inertEl.inert = false;
+    if (fsState.onResize) {
+      window.removeEventListener("resize", fsState.onResize);
+    }
+    inst.stopCamera();
     const panes = inst.root.querySelector(".mermaid-panes");
     restoreFullscreenViewport(placeholder, viewport, panes);
     const overlay = ensureOverlay();
     overlay.hidden = true;
-    inst.resetZoom();
     fsState = null;
   }
 
@@ -505,7 +522,42 @@
     overlay.hidden = false;
     const closeBtn = overlay.querySelector('[data-action="fs-close"]');
     if (closeBtn && typeof closeBtn.focus === "function") closeBtn.focus();
-    fsState = { inst, unlock, onKey, placeholder, viewport, inertEl };
+    fsState = { inst, unlock, onKey, placeholder, viewport, inertEl, stage: null, onResize: null };
+
+    function tryStart() {
+      if (!fsState || fsState.inst !== inst) return;
+      inst.startCamera();
+      fsState.stage = measureStage(viewport);
+    }
+
+    tryStart();
+    if (!inst.getCameraState() && !viewport.classList.contains("is-fs-fallback")) {
+      requestAnimationFrame(() => {
+        if (!fsState || fsState.inst !== inst) return;
+        tryStart();
+        if (!inst.getCameraState() && !viewport.classList.contains("is-fs-fallback")) {
+          viewport.classList.add("is-fs-fallback");
+        }
+      });
+    }
+
+    const onResize = () => {
+      if (!fsState || fsState.inst !== inst) return;
+      const cam = inst.getCameraState();
+      const nextStage = measureStage(viewport);
+      if (!cam || !nextStage) return;
+      const prevStage = fsState.stage || nextStage;
+      const next = resizeCamera(
+        cam,
+        inst.getUserBox(),
+        inst.getBaseSize(),
+        prevStage,
+        nextStage
+      );
+      inst.applyCameraState(next, nextStage);
+    };
+    window.addEventListener("resize", onResize);
+    fsState.onResize = onResize;
   }
 
   function createMermaidBlock(sourceText, _escapeHtml) {
@@ -540,8 +592,8 @@
     const panesEl = root.querySelector(".mermaid-panes");
     let mode = DEFAULT_MODE;
     let failed = false;
-    let zoom = { scale: 1, tx: 0, ty: 0 };
     let baseSize = null;
+    let camera = null;
     let userBox = null;
     let originalPresentation = null;
     let inst = null;
@@ -574,7 +626,6 @@
       mode = normalizeMode(next);
       if (mode !== "preview") {
         if (fsState && fsState.inst === inst) closeMermaidFullscreen();
-        applyZoomState({ scale: 1, tx: 0, ty: 0 });
       }
       syncChrome();
     }
@@ -587,21 +638,44 @@
       syncChrome();
     }
 
-    function applyZoomState(state) {
-      zoom = {
-        scale: clampScale(state.scale),
-        tx: state.tx,
-        ty: state.ty,
-      };
-      zoomTarget.style.transform = applyTransformStyle(zoom);
-      applySvgZoomSize(getDiagramSvg(), baseSize, zoom.scale);
-      const transforming =
-        zoom.scale !== 1 || zoom.tx !== 0 || zoom.ty !== 0;
-      zoomTarget.classList.toggle("is-transforming", transforming);
+    function getSvg() {
+      return getDiagramSvg();
+    }
+
+    function applyCameraState(next, stage) {
+      if (!next || !stage) return;
+      camera = { scale: next.scale, vx: next.vx, vy: next.vy };
+      applyCamera(getSvg(), camera, stage);
+      if (fsState && fsState.inst === inst) {
+        fsState.stage = stage;
+      }
+    }
+
+    function startCamera() {
+      viewportEl.classList.remove("is-camera", "is-fs-fallback");
+      camera = null;
+      const stage = measureStage(viewportEl);
+      if (!stage) return false;
+      const svg = getSvg();
+      if (!canStartCamera(baseSize, userBox, stage) || !svg) {
+        viewportEl.classList.add("is-fs-fallback");
+        return false;
+      }
+      const next = openingCamera(userBox, baseSize, stage);
+      viewportEl.classList.add("is-camera");
+      applyCameraState(next, stage);
+      return true;
+    }
+
+    function stopCamera() {
+      viewportEl.classList.remove("is-camera", "is-fs-fallback");
+      restoreSvgAttrs(getSvg(), originalPresentation);
+      camera = null;
     }
 
     function resetZoom() {
-      applyZoomState({ scale: 1, tx: 0, ty: 0 });
+      if (!(fsState && fsState.inst === inst)) return;
+      startCamera();
     }
 
     root.querySelector(".mermaid-mode-group").addEventListener("click", (ev) => {
@@ -618,14 +692,21 @@
       setMode,
       getMode: () => mode,
       setRenderFailed,
-      resetZoom,
       getViewport: () => viewportEl,
       getZoomTarget: () => zoomTarget,
       getPanes: () => panesEl,
-      applyZoomState,
-      getZoomState: () => ({ scale: zoom.scale, tx: zoom.tx, ty: zoom.ty }),
       isFailed: () => failed,
       cacheBaseSize,
+      getDiagramSvg: getSvg,
+      getUserBox: () => userBox,
+      getBaseSize: () => baseSize,
+      getOriginalPresentation: () => originalPresentation,
+      getCameraState: () =>
+        camera ? { scale: camera.scale, vx: camera.vx, vy: camera.vy } : null,
+      applyCameraState,
+      startCamera,
+      stopCamera,
+      resetZoom,
       isFullscreen: () => !!(fsState && fsState.inst === inst),
     };
     bindPreviewInteractions(inst);
