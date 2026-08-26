@@ -112,6 +112,16 @@
     return cameraScaleRange(base, userBox, stage) != null;
   }
 
+  function planStartCamera(prevCamera, stage, base, userBox, hasSvg) {
+    if (!stage) return { action: "keep" };
+    if (!canStartCamera(base, userBox, stage) || !hasSvg) {
+      return { action: "fallback" };
+    }
+    const next = openingCamera(userBox, base, stage);
+    if (!next) return { action: prevCamera ? "keep" : "fallback" };
+    return { action: "commit", camera: next, stage };
+  }
+
   function cameraViewBox(camera, stage) {
     return {
       x: camera.vx,
@@ -143,9 +153,7 @@
     let next = scale * point.factor;
     if (next < scaleMin) next = scaleMin;
     if (next > scaleMax) next = scaleMax;
-    if (next === scale) {
-      return { scale: camera.scale, vx: camera.vx, vy: camera.vy };
-    }
+    if (next === scale) return camera;
     const nx = Math.min(1, Math.max(0, point.nx));
     const ny = Math.min(1, Math.max(0, point.ny));
     const vw = stage.width / scale;
@@ -292,6 +300,7 @@
       const rect = svg.getBoundingClientRect();
       const { nx, ny } = pointerToNorm(clientX, clientY, rect);
       const next = zoomCameraAtNorm(cam, { nx, ny, factor }, stage, range.min, range.max);
+      if (next === cam) return;
       inst.applyCameraState(next, stage);
     }
 
@@ -610,18 +619,24 @@
     }
 
     function startCamera() {
-      viewportEl.classList.remove("is-camera", "is-fs-fallback");
-      camera = null;
       const stage = measureStage(viewportEl);
-      if (!stage) return false;
-      const svg = getSvg();
-      if (!canStartCamera(baseSize, userBox, stage) || !svg) {
+      const planned = planStartCamera(
+        camera,
+        stage,
+        baseSize,
+        userBox,
+        !!getSvg()
+      );
+      if (planned.action === "keep") return camera != null;
+      if (planned.action === "fallback") {
+        viewportEl.classList.remove("is-camera");
         viewportEl.classList.add("is-fs-fallback");
+        camera = null;
         return false;
       }
-      const next = openingCamera(userBox, baseSize, stage);
+      viewportEl.classList.remove("is-fs-fallback");
       viewportEl.classList.add("is-camera");
-      applyCameraState(next, stage);
+      applyCameraState(planned.camera, planned.stage);
       return true;
     }
 
@@ -685,6 +700,7 @@
     fitScale,
     cameraScaleRange,
     canStartCamera,
+    planStartCamera,
     cameraViewBox,
     viewBoxAttr,
     openingCamera,

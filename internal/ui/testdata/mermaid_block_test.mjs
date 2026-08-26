@@ -31,6 +31,7 @@ const {
   restoreSvgAttrs,
   applyCamera,
   measureStage,
+  planStartCamera,
 } = createRequire(import.meta.url)("../md/mermaid-block.js");
 
 test("normalizeMode defaults unknown to preview", () => {
@@ -283,15 +284,11 @@ test("zoomCameraAtNorm keeps user point under nx,ny", () => {
 test("zoomCameraAtNorm no-ops at clamp limits", () => {
   const stage = { width: 200, height: 100 };
   const atMax = { scale: 4, vx: 1, vy: 2 };
-  assert.deepEqual(
-    zoomCameraAtNorm(atMax, { nx: 0.5, ny: 0.5, factor: 2 }, stage, 0.5, 4),
-    atMax
-  );
+  const afterMax = zoomCameraAtNorm(atMax, { nx: 0.5, ny: 0.5, factor: 2 }, stage, 0.5, 4);
+  assert.equal(afterMax, atMax);
   const atMin = { scale: 0.5, vx: 3, vy: 4 };
-  assert.deepEqual(
-    zoomCameraAtNorm(atMin, { nx: 0.5, ny: 0.5, factor: 0.5 }, stage, 0.5, 4),
-    atMin
-  );
+  const afterMin = zoomCameraAtNorm(atMin, { nx: 0.5, ny: 0.5, factor: 0.5 }, stage, 0.5, 4);
+  assert.equal(afterMin, atMin);
 });
 
 test("panCamera shifts frustum by dx/scale", () => {
@@ -441,4 +438,68 @@ test("measureStage requires positive client box", () => {
   });
   assert.equal(measureStage({ clientWidth: 0, clientHeight: 80 }), null);
   assert.equal(measureStage(null), null);
+});
+
+test("applyCamera then restoreSvgAttrs returns original presentation", () => {
+  const svg = fakeSvg({
+    attrs: {
+      viewBox: "0 0 80 40",
+      width: "80",
+      height: "40",
+      preserveAspectRatio: "xMidYMid meet",
+    },
+    style: { width: "", height: "", maxWidth: "100%", maxHeight: "" },
+  });
+  svg.style.transform = "";
+  const captured = captureSvgPresentation(svg);
+  applyCamera(svg, { scale: 2, vx: -5, vy: -8 }, { width: 200, height: 100 });
+  assert.equal(svg.getAttribute("viewBox"), "-5 -8 100 50");
+  restoreSvgAttrs(svg, captured);
+  assert.equal(svg.getAttribute("viewBox"), "0 0 80 40");
+  assert.equal(svg.getAttribute("width"), "80");
+  assert.equal(svg.getAttribute("height"), "40");
+  assert.equal(svg.getAttribute("preserveAspectRatio"), "xMidYMid meet");
+  assert.equal(svg.style.width, "");
+  assert.equal(svg.style.maxWidth, "100%");
+  assert.equal(svg.style.transform, "");
+});
+
+test("planStartCamera keeps existing camera when stage is unmeasurable", () => {
+  const prev = { scale: 2, vx: 1, vy: 2 };
+  const base = { width: 800, height: 600 };
+  const userBox = { x: 0, y: 0, w: 800, h: 600 };
+  assert.deepEqual(planStartCamera(prev, null, base, userBox, true), {
+    action: "keep",
+  });
+  assert.deepEqual(planStartCamera(null, null, base, userBox, true), {
+    action: "keep",
+  });
+});
+
+test("planStartCamera falls back when metrics cannot start a camera", () => {
+  const prev = { scale: 1, vx: 0, vy: 0 };
+  assert.deepEqual(
+    planStartCamera(prev, { width: 200, height: 100 }, null, null, true),
+    { action: "fallback" }
+  );
+  assert.deepEqual(
+    planStartCamera(
+      null,
+      { width: 200, height: 100 },
+      { width: 80, height: 40 },
+      { x: 0, y: 0, w: 80, h: 40 },
+      false
+    ),
+    { action: "fallback" }
+  );
+});
+
+test("planStartCamera commits opening camera when measurable", () => {
+  const base = { width: 800, height: 600 };
+  const userBox = { x: 0, y: 0, w: 800, h: 600 };
+  const stage = { width: 400, height: 300 };
+  const planned = planStartCamera(null, stage, base, userBox, true);
+  assert.equal(planned.action, "commit");
+  assert.deepEqual(planned.stage, stage);
+  assert.deepEqual(planned.camera, openingCamera(userBox, base, stage));
 });

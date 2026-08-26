@@ -242,15 +242,6 @@ body {
   background: #1e1e1e;
 }
 
-.mermaid-zoom-target {
-  transform-origin: 0 0;
-}
-
-.mermaid-viewport.is-panning .mermaid-zoom-target,
-.mermaid-zoom-target.is-transforming {
-  will-change: transform;
-}
-
 .mermaid-diagram {
   overflow: visible;
   margin: 0;
