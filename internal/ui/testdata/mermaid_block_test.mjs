@@ -20,7 +20,7 @@ const {
 test("normalizeMode defaults unknown to preview", () => {
   assert.equal(normalizeMode("preview"), "preview");
   assert.equal(normalizeMode("code"), "code");
-  assert.equal(normalizeMode("split"), "split");
+  assert.equal(normalizeMode("split"), "preview");
   assert.equal(normalizeMode("nope"), "preview");
   assert.equal(normalizeMode(""), "preview");
   assert.equal(DEFAULT_MODE, "preview");
@@ -28,7 +28,7 @@ test("normalizeMode defaults unknown to preview", () => {
 
 test("modeClass", () => {
   assert.equal(modeClass("code"), "mode-code");
-  assert.equal(modeClass("split"), "mode-split");
+  assert.equal(modeClass("split"), "mode-preview");
   assert.equal(modeClass("garbage"), "mode-preview");
 });
 

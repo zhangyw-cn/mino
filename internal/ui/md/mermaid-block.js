@@ -10,7 +10,7 @@
   const SCALE_MIN = 0.25;
   const SCALE_MAX = 4;
   const DEFAULT_MODE = "preview";
-  const MODES = { code: true, split: true, preview: true };
+  const MODES = { code: true, preview: true };
 
   function normalizeMode(mode) {
     const m = String(mode || "").toLowerCase();
@@ -55,7 +55,7 @@
   }
 
   function previewActionsVisible(mode, failed) {
-    return normalizeMode(mode) === "preview" && !failed;
+    return String(mode || "").toLowerCase() === "preview" && !failed;
   }
 
   function wheelZoomFactor(deltaY) {
@@ -289,7 +289,7 @@
 
     function syncChrome() {
       root.dataset.mode = mode;
-      root.classList.remove("mode-code", "mode-split", "mode-preview");
+      root.classList.remove("mode-code", "mode-preview");
       root.classList.add(modeClass(mode));
       root.querySelectorAll(".mermaid-mode-group [data-mode]").forEach((btn) => {
         btn.setAttribute(
