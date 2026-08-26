@@ -25,6 +25,7 @@ const {
   zoomCameraAtNorm,
   panCamera,
   resizeCamera,
+  applyFullscreenResize,
   pointerToNorm,
   canStartCamera,
   captureSvgPresentation,
@@ -113,6 +114,14 @@ test("readSvgBaseSize returns null when attributes missing or invalid", () => {
     readSvgBaseSize({
       getAttribute(name) {
         return name === "width" ? "0" : "10";
+      },
+    }),
+    null
+  );
+  assert.equal(
+    readSvgBaseSize({
+      getAttribute(name) {
+        return name === "viewBox" ? "0 0 0 10" : null;
       },
     }),
     null
@@ -321,6 +330,33 @@ test("resizeCamera keeps zoomed-in center when still above contain", () => {
   const nextBox = cameraViewBox(after, next);
   assert.equal(after.vx + nextBox.w / 2, camera.vx + prevBox.w / 2);
   assert.equal(after.vy + nextBox.h / 2, camera.vy + prevBox.h / 2);
+});
+
+test("applyFullscreenResize starts camera when missing or unusable", () => {
+  const stage = { width: 400, height: 300 };
+  assert.deepEqual(applyFullscreenResize(null, null, null, null, null), {
+    action: "keep",
+  });
+  assert.deepEqual(
+    applyFullscreenResize(null, stage, null, { x: 0, y: 0, w: 80, h: 40 }, { width: 80, height: 40 }),
+    { action: "start" }
+  );
+  assert.deepEqual(
+    applyFullscreenResize({ scale: 1, vx: 0, vy: 0 }, stage, stage, null, null),
+    { action: "start" }
+  );
+});
+
+test("applyFullscreenResize applies resized camera", () => {
+  const userBox = { x: 0, y: 0, w: 800, h: 600 };
+  const base = { width: 800, height: 600 };
+  const prev = { width: 400, height: 300 };
+  const camera = { scale: 2, vx: 100, vy: 50 };
+  const nextStage = { width: 360, height: 270 };
+  const planned = applyFullscreenResize(camera, nextStage, prev, userBox, base);
+  assert.equal(planned.action, "apply");
+  assert.deepEqual(planned.stage, nextStage);
+  assert.deepEqual(planned.camera, resizeCamera(camera, userBox, base, prev, nextStage));
 });
 
 test("pointerToNorm clamps to 0..1", () => {

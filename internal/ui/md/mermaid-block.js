@@ -28,34 +28,6 @@
     return n > 0 ? n : NaN;
   }
 
-  function readSvgBaseSize(svg) {
-    if (!svg || typeof svg.getAttribute !== "function") return null;
-    const w = parsePositiveLength(svg.getAttribute("width"));
-    const h = parsePositiveLength(svg.getAttribute("height"));
-    if (w > 0 && h > 0) return { width: w, height: h };
-
-    const vb = svg.getAttribute("viewBox");
-    if (vb) {
-      const parts = String(vb)
-        .trim()
-        .split(/[\s,]+/)
-        .map(Number);
-      if (parts.length === 4 && parts[2] > 0 && parts[3] > 0) {
-        return { width: parts[2], height: parts[3] };
-      }
-    }
-
-    if (typeof svg.getBBox === "function") {
-      try {
-        const box = svg.getBBox();
-        if (box && box.width > 0 && box.height > 0) {
-          return { width: box.width, height: box.height };
-        }
-      } catch (_) {}
-    }
-    return null;
-  }
-
   function parseViewBox(value) {
     if (value == null || value === "") return null;
     const parts = String(value)
@@ -71,6 +43,26 @@
       return null;
     }
     return { x, y, w, h };
+  }
+
+  function readSvgBaseSize(svg) {
+    if (!svg || typeof svg.getAttribute !== "function") return null;
+    const w = parsePositiveLength(svg.getAttribute("width"));
+    const h = parsePositiveLength(svg.getAttribute("height"));
+    if (w > 0 && h > 0) return { width: w, height: h };
+
+    const parsed = parseViewBox(svg.getAttribute("viewBox"));
+    if (parsed) return { width: parsed.w, height: parsed.h };
+
+    if (typeof svg.getBBox === "function") {
+      try {
+        const box = svg.getBBox();
+        if (box && box.width > 0 && box.height > 0) {
+          return { width: box.width, height: box.height };
+        }
+      } catch (_) {}
+    }
+    return null;
   }
 
   function userBoxFromSvgAttrs(viewBoxStr, base) {
@@ -188,6 +180,14 @@
     const vw = nextStage.width / scale;
     const vh = nextStage.height / scale;
     return { scale, vx: cx - vw / 2, vy: cy - vh / 2 };
+  }
+
+  function applyFullscreenResize(cam, nextStage, prevStage, userBox, base) {
+    if (!nextStage) return { action: "keep" };
+    if (!cam) return { action: "start" };
+    const next = resizeCamera(cam, userBox, base, prevStage || nextStage, nextStage);
+    if (!next) return { action: "start" };
+    return { action: "apply", camera: next, stage: nextStage };
   }
 
   function pointerToNorm(clientX, clientY, rect) {
@@ -471,11 +471,11 @@
     const viewport = inst.getViewport();
     if (!viewport) return;
     const overlay = ensureOverlay();
-    const stage = overlay.querySelector(".mermaid-fs-stage");
+    const stageEl = overlay.querySelector(".mermaid-fs-stage");
     const placeholder = document.createElement("div");
     placeholder.className = "mermaid-fs-placeholder";
     viewport.replaceWith(placeholder);
-    stage.replaceChildren(viewport);
+    stageEl.replaceChildren(viewport);
     const unlock = withOverflowLocked(document.documentElement, document.body);
     const inertEl = document.querySelector("#content");
     if (inertEl) inertEl.inert = true;
@@ -510,18 +510,21 @@
 
     const onResize = () => {
       if (!fsState || fsState.inst !== inst) return;
-      const cam = inst.getCameraState();
       const nextStage = measureStage(viewport);
-      if (!cam || !nextStage) return;
-      const prevStage = fsState.stage || nextStage;
-      const next = resizeCamera(
-        cam,
+      const planned = applyFullscreenResize(
+        inst.getCameraState(),
+        nextStage,
+        fsState.stage,
         inst.getUserBox(),
-        inst.getBaseSize(),
-        prevStage,
-        nextStage
+        inst.getBaseSize()
       );
-      inst.applyCameraState(next, nextStage);
+      if (planned.action === "keep") return;
+      if (planned.action === "start") {
+        if (nextStage) fsState.stage = nextStage;
+        inst.startCamera();
+        return;
+      }
+      inst.applyCameraState(planned.camera, planned.stage);
     };
     window.addEventListener("resize", onResize);
     fsState.onResize = onResize;
@@ -707,6 +710,7 @@
     zoomCameraAtNorm,
     panCamera,
     resizeCamera,
+    applyFullscreenResize,
     pointerToNorm,
     captureSvgPresentation,
     restoreSvgAttrs,
