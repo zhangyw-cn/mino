@@ -9,6 +9,7 @@ const {
   modeClass,
   previewActionsVisible,
   previewActionsHtml,
+  cameraGesturesAllowed,
   wheelZoomFactor,
   withOverflowLocked,
   restoreFullscreenViewport,
@@ -141,6 +142,14 @@ test("previewActionsHtml is fullscreen only", () => {
   assert.doesNotMatch(html, /data-action="zoom-in"/);
   assert.doesNotMatch(html, /data-action="zoom-out"/);
   assert.doesNotMatch(html, /data-action="zoom-reset"/);
+});
+
+test("cameraGesturesAllowed only in fullscreen preview with a camera", () => {
+  assert.equal(cameraGesturesAllowed("preview", false, true, true), true);
+  assert.equal(cameraGesturesAllowed("preview", false, false, true), false);
+  assert.equal(cameraGesturesAllowed("preview", false, true, false), false);
+  assert.equal(cameraGesturesAllowed("code", false, true, true), false);
+  assert.equal(cameraGesturesAllowed("preview", true, true, true), false);
 });
 
 test("wheelZoomFactor", () => {

@@ -272,16 +272,24 @@
     return d < 0 ? 1.1 : 1 / 1.1;
   }
 
+  function cameraGesturesAllowed(mode, failed, fullscreen, hasCamera) {
+    return (
+      String(mode || "").toLowerCase() === "preview" &&
+      !failed &&
+      !!fullscreen &&
+      !!hasCamera
+    );
+  }
+
   function bindPreviewInteractions(inst) {
     const viewport = inst.getViewport();
     const root = inst.root;
 
     function canUseCamera() {
-      return (
-        inst.getMode() === "preview" &&
-        !inst.isFailed() &&
-        typeof inst.isFullscreen === "function" &&
-        inst.isFullscreen() &&
+      return cameraGesturesAllowed(
+        inst.getMode(),
+        inst.isFailed(),
+        typeof inst.isFullscreen === "function" && inst.isFullscreen(),
         inst.getCameraState() != null
       );
     }
@@ -696,6 +704,7 @@
     modeClass,
     previewActionsVisible,
     previewActionsHtml,
+    cameraGesturesAllowed,
     readSvgBaseSize,
     parseViewBox,
     userBoxFromSvgAttrs,
