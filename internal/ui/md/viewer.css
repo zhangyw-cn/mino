@@ -16,7 +16,6 @@ body {
   gap: 24px;
   margin: 0 auto;
   padding: 0 16px;
-  box-sizing: border-box;
 }
 
 .markdown-body {

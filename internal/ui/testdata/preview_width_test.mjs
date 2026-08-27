@@ -34,6 +34,11 @@ test("parsePreviewWidth defaults invalid values to wide", () => {
   assert.equal(parsePreviewWidth("narrow"), "wide");
 });
 
+test("parsePreviewWidth ignores Object.prototype keys", () => {
+  assert.equal(parsePreviewWidth("constructor"), "wide");
+  assert.equal(parsePreviewWidth("toString"), "wide");
+});
+
 test("isMarkdownPath", () => {
   assert.equal(isMarkdownPath("docs/sample.md"), true);
   assert.equal(isMarkdownPath("README.MD"), true);

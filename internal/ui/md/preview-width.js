@@ -16,7 +16,7 @@
 
   function parsePreviewWidth(value) {
     const v = String(value || "");
-    return WIDTHS[v] ? v : DEFAULT_WIDTH;
+    return Object.hasOwn(WIDTHS, v) ? v : DEFAULT_WIDTH;
   }
 
   function isMarkdownPath(path) {
@@ -58,7 +58,7 @@
   function parsePreviewWidthMessage(data, origin, expectedOrigin) {
     if (origin !== expectedOrigin) return null;
     if (!data || data.source !== MESSAGE_SOURCE || data.type !== MESSAGE_TYPE) return null;
-    if (!WIDTHS[data.value]) return null;
+    if (!Object.hasOwn(WIDTHS, data.value)) return null;
     return data.value;
   }
 
