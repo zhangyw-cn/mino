@@ -2,6 +2,24 @@
   const { preprocessMath, escapeHtml } = globalThis.MinoMDPreprocess;
   const { ensureHeadingIds } = globalThis.MinoMDToc;
   const { createMermaidBlock } = globalThis.MinoMDMermaidBlock;
+  const {
+    readPreviewWidth,
+    applyPreviewWidth,
+    parsePreviewWidthMessage,
+  } = globalThis.MinoMDPreviewWidth;
+
+  // data-md-width is applied here so first paint and postMessage stay in sync.
+  applyPreviewWidth(document.documentElement, readPreviewWidth(localStorage));
+
+  window.addEventListener("message", (event) => {
+    const mode = parsePreviewWidthMessage(
+      event.data,
+      event.origin,
+      window.location.origin
+    );
+    if (!mode) return;
+    applyPreviewWidth(document.documentElement, mode);
+  });
 
   function languageName(lang) {
     return String(lang || "")

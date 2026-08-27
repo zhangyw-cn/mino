@@ -201,10 +201,41 @@ func TestViewerPipelineMarkers(t *testing.T) {
 		"ensureHeadingIds",
 		"scrollIntoView",
 		"On this page",
+		"MinoMDPreviewWidth",
+		"data-md-width",
+		"parsePreviewWidthMessage",
 	} {
 		if !strings.Contains(js, marker) {
 			t.Fatalf("viewer.js missing %q", marker)
 		}
+	}
+
+	cssRes, err := http.Get(ts.URL + "/md/viewer.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cssBody, _ := io.ReadAll(cssRes.Body)
+	cssRes.Body.Close()
+	if cssRes.StatusCode != http.StatusOK {
+		t.Fatalf("viewer.css status %d", cssRes.StatusCode)
+	}
+	css := string(cssBody)
+	for _, marker := range []string{
+		`html[data-md-width="standard"]`,
+		`html[data-md-width="wide"]`,
+		`html[data-md-width="full"]`,
+		"max-width: 960px",
+		"max-width: 1400px",
+	} {
+		if !strings.Contains(css, marker) {
+			t.Fatalf("viewer.css missing %q", marker)
+		}
+	}
+	if strings.Contains(css, "max-width: 860px") {
+		t.Fatal("viewer.css must not keep the 860px article cap")
+	}
+	if strings.Contains(css, "max-width: 1120px") {
+		t.Fatal("viewer.css must not keep the 1120px layout cap")
 	}
 }
 
@@ -239,6 +270,9 @@ func TestMarkdownAppsAndRaw(t *testing.T) {
 	}
 	if !strings.Contains(html, "/md/toc.js") {
 		t.Fatalf("missing toc.js: %s", body)
+	}
+	if !strings.Contains(html, "/md/preview-width.js") {
+		t.Fatalf("missing preview-width.js: %s", body)
 	}
 	if !strings.Contains(html, "/md/mermaid-block.js") {
 		t.Fatalf("missing mermaid-block.js: %s", body)

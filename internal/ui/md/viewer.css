@@ -14,25 +14,65 @@ body {
   display: flex;
   align-items: flex-start;
   gap: 24px;
-  max-width: 1120px;
   margin: 0 auto;
   padding: 0 16px;
-}
-
-/* No outline: keep article centered like pre-TOC viewer (body unchanged). */
-.md-layout:has(#toc[hidden]) {
-  justify-content: center;
-  max-width: 860px;
+  box-sizing: border-box;
 }
 
 .markdown-body {
   box-sizing: border-box;
   flex: 1 1 auto;
   min-width: 0;
-  max-width: 860px;
   margin: 0;
   padding: 24px 32px 56px;
   font-size: 15px;
+}
+
+/* Default = 较宽 so first paint matches DEFAULT_WIDTH before JS. */
+.md-layout {
+  max-width: 1644px;
+}
+.md-layout:has(#toc[hidden]) {
+  justify-content: center;
+  max-width: 1400px;
+}
+.markdown-body {
+  max-width: 1400px;
+}
+
+html[data-md-width="standard"] .md-layout {
+  max-width: 1204px;
+}
+html[data-md-width="standard"] .md-layout:has(#toc[hidden]) {
+  justify-content: center;
+  max-width: 960px;
+}
+html[data-md-width="standard"] .markdown-body {
+  max-width: 960px;
+}
+
+html[data-md-width="wide"] .md-layout {
+  max-width: 1644px;
+}
+html[data-md-width="wide"] .md-layout:has(#toc[hidden]) {
+  justify-content: center;
+  max-width: 1400px;
+}
+html[data-md-width="wide"] .markdown-body {
+  max-width: 1400px;
+}
+
+html[data-md-width="full"] .md-layout {
+  max-width: none;
+  width: 100%;
+}
+html[data-md-width="full"] .md-layout:has(#toc[hidden]) {
+  max-width: none;
+  width: 100%;
+  justify-content: center;
+}
+html[data-md-width="full"] .markdown-body {
+  max-width: none;
 }
 
 .markdown-body > :first-child {
@@ -449,7 +489,19 @@ body {
 @media (max-width: 959px) {
   .md-layout {
     flex-direction: column;
-    max-width: 860px;
+  }
+  html[data-md-width="standard"] .md-layout,
+  html[data-md-width="standard"] .md-layout:has(#toc[hidden]) {
+    max-width: 960px;
+  }
+  html[data-md-width="wide"] .md-layout,
+  html[data-md-width="wide"] .md-layout:has(#toc[hidden]) {
+    max-width: 1400px;
+  }
+  html[data-md-width="full"] .md-layout,
+  html[data-md-width="full"] .md-layout:has(#toc[hidden]) {
+    max-width: none;
+    width: 100%;
   }
   .toc {
     position: static;
