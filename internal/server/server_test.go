@@ -643,6 +643,27 @@ func TestIndexHTMLHasIframeAndAppJS(t *testing.T) {
 	if strings.Contains(html, "Choose an HTML file from the sidebar.") {
 		t.Fatal("index must not use HTML-only empty copy")
 	}
+	for _, marker := range []string{
+		`<footer class="status-bar">`,
+		`id="md-width-wrap"`,
+		`id="md-width-button"`,
+		`id="md-width-menu"`,
+		`aria-haspopup="menu"`,
+		`data-md-width="standard"`,
+		`data-md-width="wide"`,
+		`data-md-width="full"`,
+		"/md/preview-width.js",
+		"标宽",
+		"较宽",
+		"全宽",
+	} {
+		if !strings.Contains(html, marker) {
+			t.Fatalf("index missing %q", marker)
+		}
+	}
+	if strings.Contains(html, "#007ACC") || strings.Contains(html, "#007acc") {
+		t.Fatal("index must not use Default Dark+ status blue")
+	}
 }
 
 func TestFuzzyJSServed(t *testing.T) {
@@ -801,6 +822,10 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 		".command-center-label",
 		".icon-folder-open",
 		".breadcrumb",
+		".status-bar",
+		"height: 22px",
+		"#md-width-menu",
+		"#md-width-wrap",
 	} {
 		if !strings.Contains(css, marker) {
 			t.Fatalf("style.css missing contract %q", marker)
@@ -808,5 +833,19 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 	}
 	if strings.Contains(css, ".quick-open-chip") {
 		t.Fatal("style.css must not include .quick-open-chip")
+	}
+	statusIdx := strings.Index(css, ".status-bar {")
+	if statusIdx < 0 {
+		t.Fatal("style.css missing .status-bar block")
+	}
+	block := css[statusIdx:]
+	if end := strings.Index(block, "\n}"); end >= 0 {
+		block = block[:end]
+	}
+	if strings.Contains(block, "#007ACC") || strings.Contains(block, "#007acc") {
+		t.Fatal("status bar must not use Default Dark+ blue")
+	}
+	if !strings.Contains(block, "var(--bg-shell)") {
+		t.Fatal("status bar must use --bg-shell")
 	}
 }
