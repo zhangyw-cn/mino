@@ -51,6 +51,8 @@ Markdown is rendered through a sanitized viewer (not a raw executable document):
 
 The workbench has a bottom status bar. For `.md` files it exposes 标宽 / 较宽 / 全宽 (960px / 1400px / fill); the default is 较宽. The choice is stored in this origin’s `localStorage` under `mino-md-preview-width` and applies to all Markdown files.
 
+A same-tab refresh of the workbench URL reopens the file you were previewing. That path is stored in this tab’s `sessionStorage` under `mino-open-path`. A new tab on `/` starts with no file selected.
+
 That still is not a security boundary for untrusted files. Only preview Markdown from trusted workspaces.
 
 Mino has no authentication and is intended for local use, binding to `127.0.0.1` by default. Do not change `host` to a public or LAN address unless you understand the exposure.

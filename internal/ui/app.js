@@ -16,6 +16,7 @@
   const emptyState = document.querySelector("#empty-state");
   const watchBanner = document.querySelector("#watch-banner");
   const mdWidth = globalThis.MinoMDPreviewWidth;
+  const openPath = globalThis.MinoOpenPath;
   const mdWidthWrap = document.querySelector("#md-width-wrap");
   const mdWidthButton = document.querySelector("#md-width-button");
   const mdWidthMenu = document.querySelector("#md-width-menu");
@@ -24,6 +25,7 @@
 
   const expandedPaths = new Set([""]);
   let currentPath = "";
+  let didRestoreOpenPath = false;
   let listingAbort = null;
   let listingRequestId = 0;
   let lastTree = null;
@@ -99,6 +101,7 @@
     emptyState.hidden = true;
     markSelection();
     syncMdWidthControl();
+    openPath.writeOpenPath(sessionStorage, path);
   }
 
   function clearPreview() {
@@ -109,6 +112,7 @@
     setBreadcrumb("");
     markSelection();
     syncMdWidthControl();
+    openPath.clearOpenPath(sessionStorage);
   }
 
   function postMdWidthToPreview() {
@@ -330,12 +334,26 @@
       fileIndex = flattenFiles(root, []);
       recents = recents.filter((path) => fileIndex.includes(path));
       renderTreeFromCache();
+      maybeRestoreOpenPath();
       if (pickerOpen) renderPicker();
     } catch (error) {
       if (error.name === "AbortError") return;
       console.error("Failed to load tree", error);
       showMessage("Could not load files.");
     }
+  }
+
+  function maybeRestoreOpenPath() {
+    if (didRestoreOpenPath) return;
+    didRestoreOpenPath = true;
+    const path = openPath.resolveOpenPath(openPath.readOpenPath(sessionStorage), fileIndex);
+    if (!path) {
+      openPath.clearOpenPath(sessionStorage);
+      return;
+    }
+    for (const ancestor of ancestorPaths(path)) expandedPaths.add(ancestor);
+    openFile(path);
+    renderTreeFromCache();
   }
 
   async function loadMeta() {

@@ -814,6 +814,11 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 		"postMdWidthToPreview",
 		"md-preview-width",
 		"setMdWidthMenuOpen",
+		"MinoOpenPath",
+		"maybeRestoreOpenPath",
+		"writeOpenPath",
+		"clearOpenPath",
+		"sessionStorage",
 	} {
 		if !strings.Contains(js, marker) {
 			t.Fatalf("app.js missing contract %q", marker)
@@ -839,6 +844,12 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 	}
 	if strings.Contains(js, "commandCenter.textContent") {
 		t.Fatal("app.js must not set commandCenter.textContent")
+	}
+	if strings.Contains(js, "localStorage.setItem") && strings.Contains(js, "mino-open-path") {
+		t.Fatal("app.js must not persist the open path in localStorage")
+	}
+	if strings.Contains(js, "pushState") || strings.Contains(js, "replaceState") {
+		t.Fatal("app.js must not change history for the open path")
 	}
 	if strings.Contains(js, `"file-html": FILE_PATH,`) || strings.Contains(js, `"file-html": FILE_PATH}`) {
 		t.Fatal("html icon must not reuse the generic file path")
