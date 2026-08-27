@@ -123,6 +123,7 @@ func TestMDVendorAssetsServed(t *testing.T) {
 		"/md/viewer.css",
 		"/md/preprocess.js",
 		"/md/toc.js",
+		"/md/preview-width.js",
 		"/md/mermaid-block.js",
 		"/md/vendor/fonts/KaTeX_Main-Regular.woff2",
 	} {
