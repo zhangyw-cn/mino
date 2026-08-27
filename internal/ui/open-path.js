@@ -48,6 +48,17 @@
     return fileIndex.includes(path) ? path : "";
   }
 
+  function createOpenPathRestore() {
+    let done = false;
+    return function takeOpenPathRestore(storage, fileIndex) {
+      if (done) return "";
+      done = true;
+      const path = resolveOpenPath(readOpenPath(storage), fileIndex);
+      if (!path) clearOpenPath(storage);
+      return path;
+    };
+  }
+
   return {
     STORAGE_KEY,
     parseOpenPath,
@@ -55,5 +66,6 @@
     writeOpenPath,
     clearOpenPath,
     resolveOpenPath,
+    createOpenPathRestore,
   };
 });

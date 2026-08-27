@@ -9,6 +9,7 @@ const {
   writeOpenPath,
   clearOpenPath,
   resolveOpenPath,
+  createOpenPathRestore,
 } = createRequire(import.meta.url)("../open-path.js");
 
 test("STORAGE_KEY", () => {
@@ -86,6 +87,12 @@ test("writeOpenPath swallows setItem throw", () => {
   );
 });
 
+test("writeOpenPath with null storage still returns parsed path", () => {
+  assert.equal(writeOpenPath(null, "docs/sample.md"), "docs/sample.md");
+  assert.equal(writeOpenPath(null, "  notes/a.html  "), "notes/a.html");
+  assert.equal(writeOpenPath(null, "   "), "");
+});
+
 test("clearOpenPath removes key and swallows throw", () => {
   const storage = memoryStorage({ "mino-open-path": "docs/sample.md" });
   clearOpenPath(storage);
@@ -107,4 +114,37 @@ test("resolveOpenPath requires membership in fileIndex", () => {
   assert.equal(resolveOpenPath("docs/sample.md", []), "");
   assert.equal(resolveOpenPath("docs/sample.md", null), "");
   assert.equal(resolveOpenPath("../secret.md", index), "");
+});
+
+test("createOpenPathRestore returns catalog path once", () => {
+  const storage = memoryStorage({ "mino-open-path": "  docs/sample.md  " });
+  const take = createOpenPathRestore();
+  const index = ["hello.html", "docs/sample.md"];
+  assert.equal(take(storage, index), "docs/sample.md");
+  assert.equal(storage.getItem("mino-open-path"), "  docs/sample.md  ");
+  assert.equal(take(storage, index), "");
+});
+
+test("createOpenPathRestore clears missing path and stays spent", () => {
+  const storage = memoryStorage({ "mino-open-path": "gone.md" });
+  const take = createOpenPathRestore();
+  assert.equal(take(storage, ["docs/sample.md"]), "");
+  assert.equal(storage.getItem("mino-open-path"), null);
+  storage.setItem("mino-open-path", "docs/sample.md");
+  assert.equal(take(storage, ["docs/sample.md"]), "");
+});
+
+test("createOpenPathRestore instances do not share the one-shot flag", () => {
+  const storage = memoryStorage({ "mino-open-path": "docs/sample.md" });
+  const first = createOpenPathRestore();
+  const second = createOpenPathRestore();
+  const index = ["docs/sample.md"];
+  assert.equal(first(storage, index), "docs/sample.md");
+  assert.equal(second(storage, index), "docs/sample.md");
+});
+
+test("createOpenPathRestore never called leaves the key", () => {
+  const storage = memoryStorage({ "mino-open-path": "docs/sample.md" });
+  createOpenPathRestore();
+  assert.equal(storage.getItem("mino-open-path"), "docs/sample.md");
 });

@@ -17,6 +17,14 @@
   const watchBanner = document.querySelector("#watch-banner");
   const mdWidth = globalThis.MinoMDPreviewWidth;
   const openPath = globalThis.MinoOpenPath;
+  const takeOpenPathRestore = openPath && openPath.createOpenPathRestore
+    ? openPath.createOpenPathRestore()
+    : function takeOpenPathRestore() {
+        return "";
+      };
+  if (!openPath) {
+    console.error("MinoOpenPath is missing; preview restore is disabled");
+  }
   const mdWidthWrap = document.querySelector("#md-width-wrap");
   const mdWidthButton = document.querySelector("#md-width-button");
   const mdWidthMenu = document.querySelector("#md-width-menu");
@@ -25,7 +33,6 @@
 
   const expandedPaths = new Set([""]);
   let currentPath = "";
-  let didRestoreOpenPath = false;
   let listingAbort = null;
   let listingRequestId = 0;
   let lastTree = null;
@@ -101,7 +108,7 @@
     emptyState.hidden = true;
     markSelection();
     syncMdWidthControl();
-    openPath.writeOpenPath(sessionStorage, path);
+    persistOpenPath(path);
   }
 
   function clearPreview() {
@@ -112,7 +119,25 @@
     setBreadcrumb("");
     markSelection();
     syncMdWidthControl();
-    openPath.clearOpenPath(sessionStorage);
+    forgetOpenPath();
+  }
+
+  function sessionStore() {
+    try {
+      return sessionStorage;
+    } catch (_err) {
+      return null;
+    }
+  }
+
+  function persistOpenPath(path) {
+    if (!openPath) return;
+    openPath.writeOpenPath(sessionStore(), path);
+  }
+
+  function forgetOpenPath() {
+    if (!openPath) return;
+    openPath.clearOpenPath(sessionStore());
   }
 
   function postMdWidthToPreview() {
@@ -343,17 +368,20 @@
     }
   }
 
+  function revealSelectedFile() {
+    const row = tree.querySelector(".tree-row.file.selected");
+    if (!row || typeof row.scrollIntoView !== "function") return;
+    row.scrollIntoView({ block: "nearest" });
+  }
+
   function maybeRestoreOpenPath() {
-    if (didRestoreOpenPath) return;
-    didRestoreOpenPath = true;
-    const path = openPath.resolveOpenPath(openPath.readOpenPath(sessionStorage), fileIndex);
-    if (!path) {
-      openPath.clearOpenPath(sessionStorage);
-      return;
-    }
+    if (!openPath) return;
+    const path = takeOpenPathRestore(sessionStore(), fileIndex);
+    if (!path) return;
     for (const ancestor of ancestorPaths(path)) expandedPaths.add(ancestor);
     openFile(path);
     renderTreeFromCache();
+    revealSelectedFile();
   }
 
   async function loadMeta() {
@@ -522,6 +550,7 @@
     for (const ancestor of ancestorPaths(path)) expandedPaths.add(ancestor);
     openFile(path);
     renderTreeFromCache();
+    revealSelectedFile();
     setPickerOpen(false);
     preview.focus();
   }

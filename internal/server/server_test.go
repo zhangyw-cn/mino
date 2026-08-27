@@ -646,6 +646,11 @@ func TestIndexHTMLHasIframeAndAppJS(t *testing.T) {
 	if strings.Contains(html, `id="search"`) {
 		t.Fatal("index must not include top-bar #search")
 	}
+	openPathSrc := strings.Index(html, `src="/open-path.js"`)
+	appSrc := strings.Index(html, `src="/app.js"`)
+	if openPathSrc < 0 || appSrc < 0 || openPathSrc > appSrc {
+		t.Fatal("index must load /open-path.js before /app.js")
+	}
 	if strings.Contains(html, `id="quick-open-footer"`) {
 		t.Fatal("index must not include #quick-open-footer")
 	}
@@ -745,6 +750,7 @@ func TestOpenPathJSServed(t *testing.T) {
 		"writeOpenPath",
 		"clearOpenPath",
 		"resolveOpenPath",
+		"createOpenPathRestore",
 	} {
 		if !strings.Contains(js, marker) {
 			t.Fatalf("open-path.js missing %q", marker)
@@ -816,9 +822,15 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 		"setMdWidthMenuOpen",
 		"MinoOpenPath",
 		"maybeRestoreOpenPath",
+		"createOpenPathRestore",
+		"takeOpenPathRestore",
+		"sessionStore",
+		"persistOpenPath",
+		"forgetOpenPath",
+		"revealSelectedFile",
+		"scrollIntoView",
 		"writeOpenPath",
 		"clearOpenPath",
-		"sessionStorage",
 	} {
 		if !strings.Contains(js, marker) {
 			t.Fatalf("app.js missing contract %q", marker)
@@ -845,11 +857,28 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 	if strings.Contains(js, "commandCenter.textContent") {
 		t.Fatal("app.js must not set commandCenter.textContent")
 	}
-	if strings.Contains(js, "localStorage.setItem") && strings.Contains(js, "mino-open-path") {
+	if strings.Contains(js, "writeOpenPath(localStorage") {
 		t.Fatal("app.js must not persist the open path in localStorage")
 	}
-	if strings.Contains(js, "pushState") || strings.Contains(js, "replaceState") {
+	if !strings.Contains(js, "writeOpenPath(sessionStore()") {
+		t.Fatal("app.js must persist the open path through sessionStore()")
+	}
+	if strings.Contains(js, "history.pushState") || strings.Contains(js, "history.replaceState") {
 		t.Fatal("app.js must not change history for the open path")
+	}
+	loadTreeStart := strings.Index(js, "async function loadTree")
+	loadMetaStart := strings.Index(js, "async function loadMeta")
+	if loadTreeStart < 0 || loadMetaStart < 0 || loadTreeStart > loadMetaStart {
+		t.Fatal("app.js must define loadTree before loadMeta")
+	}
+	loadTree := js[loadTreeStart:loadMetaStart]
+	restoreCall := strings.Index(loadTree, "maybeRestoreOpenPath();")
+	catchIdx := strings.Index(loadTree, "catch (error)")
+	if restoreCall < 0 || catchIdx < 0 || restoreCall > catchIdx {
+		t.Fatal("maybeRestoreOpenPath must run in loadTree try, not catch")
+	}
+	if strings.Contains(loadTree[catchIdx:], "maybeRestoreOpenPath();") {
+		t.Fatal("loadTree catch must not call maybeRestoreOpenPath")
 	}
 	if strings.Contains(js, `"file-html": FILE_PATH,`) || strings.Contains(js, `"file-html": FILE_PATH}`) {
 		t.Fatal("html icon must not reuse the generic file path")
