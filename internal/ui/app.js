@@ -15,6 +15,12 @@
   const sidebarCollapse = document.querySelector("#sidebar-collapse");
   const emptyState = document.querySelector("#empty-state");
   const watchBanner = document.querySelector("#watch-banner");
+  const mdWidth = globalThis.MinoMDPreviewWidth;
+  const mdWidthWrap = document.querySelector("#md-width-wrap");
+  const mdWidthButton = document.querySelector("#md-width-button");
+  const mdWidthMenu = document.querySelector("#md-width-menu");
+  let previewWidth = mdWidth.readPreviewWidth(localStorage);
+  let mdWidthMenuOpen = false;
 
   const expandedPaths = new Set([""]);
   let currentPath = "";
@@ -92,6 +98,7 @@
     preview.hidden = false;
     emptyState.hidden = true;
     markSelection();
+    syncMdWidthControl();
   }
 
   function clearPreview() {
@@ -101,6 +108,44 @@
     emptyState.hidden = false;
     setBreadcrumb("");
     markSelection();
+    syncMdWidthControl();
+  }
+
+  function postMdWidthToPreview() {
+    if (!mdWidth.isMarkdownPath(currentPath)) return;
+    const frame = preview.contentWindow;
+    if (!frame) return;
+    try {
+      const message = mdWidth.previewWidthMessage(previewWidth);
+      if (message.type !== "md-preview-width") return;
+      frame.postMessage(message, window.location.origin);
+    } catch (_err) {}
+  }
+
+  function setMdWidthMenuOpen(open) {
+    mdWidthMenuOpen = !!open;
+    mdWidthMenu.hidden = !mdWidthMenuOpen;
+    mdWidthButton.setAttribute("aria-expanded", String(mdWidthMenuOpen));
+  }
+
+  function syncMdWidthControl() {
+    const show = mdWidth.isMarkdownPath(currentPath);
+    mdWidthWrap.hidden = !show;
+    if (!show) {
+      setMdWidthMenuOpen(false);
+      return;
+    }
+    mdWidthButton.textContent = mdWidth.WIDTH_LABELS[previewWidth];
+    mdWidthMenu.querySelectorAll("[data-md-width]").forEach((item) => {
+      item.setAttribute("aria-checked", String(item.getAttribute("data-md-width") === previewWidth));
+    });
+  }
+
+  function setPreviewWidth(mode) {
+    previewWidth = mdWidth.writePreviewWidth(localStorage, mode);
+    syncMdWidthControl();
+    postMdWidthToPreview();
+    setMdWidthMenuOpen(false);
   }
 
   function markSelection() {
@@ -335,6 +380,7 @@
 
   function setPickerOpen(open, deferBackdrop) {
     if (open) {
+      setMdWidthMenuOpen(false);
       pickerOpen = true;
       quickOpen.hidden = false;
       quickOpenBackdrop.hidden = false;
@@ -482,6 +528,11 @@
       quickOpenInput.select();
       return;
     }
+    if (event.key === "Escape" && mdWidthMenuOpen) {
+      event.preventDefault();
+      setMdWidthMenuOpen(false);
+      return;
+    }
     if (!pickerOpen) return;
     if (event.key === "Escape") {
       event.preventDefault();
@@ -509,6 +560,22 @@
     quickOpenInput.focus();
   });
 
+  mdWidthButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    setMdWidthMenuOpen(!mdWidthMenuOpen);
+  });
+  mdWidthMenu.addEventListener("click", (event) => {
+    const item = event.target.closest("[data-md-width]");
+    if (!item) return;
+    event.preventDefault();
+    setPreviewWidth(item.getAttribute("data-md-width"));
+  });
+  document.addEventListener("pointerdown", (event) => {
+    if (!mdWidthMenuOpen) return;
+    if (mdWidthWrap.contains(event.target)) return;
+    setMdWidthMenuOpen(false);
+  });
+
   quickOpenInput.addEventListener("input", () => {
     if (!pickerOpen) return;
     pickerRows = [];
@@ -531,7 +598,11 @@
   });
 
   document.addEventListener("keydown", onQuickOpenHotkey, true);
-  preview.addEventListener("load", bindPreviewHotkeys);
+  function onPreviewLoad() {
+    bindPreviewHotkeys();
+    postMdWidthToPreview();
+  }
+  preview.addEventListener("load", onPreviewLoad);
 
   function hideBackdrop(event) {
     if (event && quickOpenBackdrop.hasPointerCapture(event.pointerId)) {
@@ -584,6 +655,7 @@
   }
 
   fillIcons();
+  syncMdWidthControl();
   setSidebarCollapsed(false);
   loadMeta();
   loadTree();

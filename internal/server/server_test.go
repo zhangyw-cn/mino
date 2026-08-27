@@ -745,6 +745,11 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 		`icon("folder-open")`,
 		"No HTML or Markdown files found.",
 		"quick-open-icon",
+		"MinoMDPreviewWidth",
+		"syncMdWidthControl",
+		"postMdWidthToPreview",
+		"md-preview-width",
+		"setMdWidthMenuOpen",
 	} {
 		if !strings.Contains(js, marker) {
 			t.Fatalf("app.js missing contract %q", marker)
