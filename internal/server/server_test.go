@@ -636,6 +636,7 @@ func TestIndexHTMLHasIframeAndAppJS(t *testing.T) {
 		`id="quick-open-backdrop"`,
 		`role="dialog"`,
 		`/fuzzy.js`,
+		`/open-path.js`,
 		`class="search-wrap"`,
 	} {
 		if !strings.Contains(html, marker) {
@@ -719,6 +720,35 @@ func TestFuzzyJSServed(t *testing.T) {
 	}
 	if !strings.Contains(js, "function filter") {
 		t.Fatal("fuzzy.js missing filter")
+	}
+}
+
+func TestOpenPathJSServed(t *testing.T) {
+	_, ts, _ := newTestServer(t)
+	defer ts.Close()
+
+	res, err := http.Get(ts.URL + "/open-path.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := io.ReadAll(res.Body)
+	res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("status %d", res.StatusCode)
+	}
+	js := string(body)
+	for _, marker := range []string{
+		"MinoOpenPath",
+		`"mino-open-path"`,
+		"parseOpenPath",
+		"readOpenPath",
+		"writeOpenPath",
+		"clearOpenPath",
+		"resolveOpenPath",
+	} {
+		if !strings.Contains(js, marker) {
+			t.Fatalf("open-path.js missing %q", marker)
+		}
 	}
 }
 
