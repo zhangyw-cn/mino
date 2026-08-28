@@ -262,6 +262,9 @@ func TestMarkdownAppsAndRaw(t *testing.T) {
 	if !strings.Contains(html, "/md/viewer.js") {
 		t.Fatalf("missing viewer.js: %s", body)
 	}
+	if !strings.Contains(html, "/preview-session.js") {
+		t.Fatalf("missing preview-session.js: %s", body)
+	}
 	if !strings.Contains(html, "/md/preprocess.js") {
 		t.Fatalf("missing preprocess.js: %s", body)
 	}
@@ -637,6 +640,7 @@ func TestIndexHTMLHasIframeAndAppJS(t *testing.T) {
 		`role="dialog"`,
 		`/fuzzy.js`,
 		`/open-path.js`,
+		`/preview-session.js`,
 		`class="search-wrap"`,
 	} {
 		if !strings.Contains(html, marker) {
@@ -650,6 +654,10 @@ func TestIndexHTMLHasIframeAndAppJS(t *testing.T) {
 	appSrc := strings.Index(html, `src="/app.js"`)
 	if openPathSrc < 0 || appSrc < 0 || openPathSrc > appSrc {
 		t.Fatal("index must load /open-path.js before /app.js")
+	}
+	sessionSrc := strings.Index(html, `src="/preview-session.js"`)
+	if sessionSrc < 0 || sessionSrc > appSrc {
+		t.Fatal("index must load /preview-session.js before /app.js")
 	}
 	if strings.Contains(html, `id="quick-open-footer"`) {
 		t.Fatal("index must not include #quick-open-footer")
@@ -754,6 +762,37 @@ func TestOpenPathJSServed(t *testing.T) {
 	} {
 		if !strings.Contains(js, marker) {
 			t.Fatalf("open-path.js missing %q", marker)
+		}
+	}
+}
+
+func TestPreviewSessionJSServed(t *testing.T) {
+	_, ts, _ := newTestServer(t)
+	defer ts.Close()
+
+	res, err := http.Get(ts.URL + "/preview-session.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := io.ReadAll(res.Body)
+	res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("status %d", res.StatusCode)
+	}
+	js := string(body)
+	for _, marker := range []string{
+		"MinoPreviewSession",
+		"kindId",
+		"inPlace",
+		"decidePreviewAction",
+		"preview-navigate",
+		"preview-reload",
+		"preview-ready",
+		"preview-error",
+		"parsePreviewMessage",
+	} {
+		if !strings.Contains(js, marker) {
+			t.Fatalf("preview-session.js missing %q", marker)
 		}
 	}
 }
