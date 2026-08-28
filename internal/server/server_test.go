@@ -899,6 +899,12 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 		"previewReloadMessage",
 		"parsePreviewMessage",
 		"preview-ready",
+		"loadedPath",
+		"revealPreviewIfCurrent(loadedPath)",
+		"inPlace(loadedPath)",
+		"contentWindow.location",
+		"decodeURIComponent",
+		"force && path === fromPath && displayedPath === path",
 	} {
 		if !strings.Contains(js, marker) {
 			t.Fatalf("app.js missing contract %q", marker)
@@ -907,6 +913,12 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 	if !strings.Contains(js, `parsed.type === "preview-ready"`) &&
 		!strings.Contains(js, `parsed.type === 'preview-ready'`) {
 		t.Fatal("app.js must reveal in-place kinds on preview-ready")
+	}
+	if strings.Contains(js, "revealPreviewIfCurrent(currentPath)") {
+		t.Fatal("iframe load must not reveal using currentPath")
+	}
+	if strings.Contains(js, "inPlace(currentPath)") {
+		t.Fatal("iframe load must not treat in-place from currentPath")
 	}
 	if strings.Contains(js, `"◇"`) || strings.Contains(js, "'◇'") {
 		t.Fatal("app.js must not use diamond file glyphs")

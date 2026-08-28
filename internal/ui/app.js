@@ -52,6 +52,20 @@
     return `/apps/${encoded}?t=${Date.now()}`;
   }
 
+  function loadedPreviewPath() {
+    try {
+      const loc = preview.contentWindow.location;
+      if (loc.origin !== window.location.origin) return "";
+      const prefix = "/apps/";
+      if (!loc.pathname.startsWith(prefix)) return "";
+      const encoded = loc.pathname.slice(prefix.length);
+      if (!encoded) return "";
+      return encoded.split("/").map(decodeURIComponent).join("/");
+    } catch (_err) {
+      return "";
+    }
+  }
+
   function invalidateListingRequest() {
     if (listingAbort) {
       listingAbort.abort();
@@ -142,7 +156,7 @@
     if (action === "skip") return;
     if (action === "in-place" && previewSession) {
       const message =
-        force && path === fromPath
+        force && path === fromPath && displayedPath === path
           ? previewSession.previewReloadMessage(path)
           : previewSession.previewNavigateMessage(path);
       postPreviewToFrame(message);
@@ -699,8 +713,9 @@
   function onPreviewLoad() {
     bindPreviewHotkeys();
     postMdWidthToPreview();
-    if (previewSession && previewSession.inPlace(currentPath)) return;
-    revealPreviewIfCurrent(currentPath);
+    const loadedPath = loadedPreviewPath();
+    if (previewSession && previewSession.inPlace(loadedPath)) return;
+    revealPreviewIfCurrent(loadedPath);
   }
   preview.addEventListener("load", onPreviewLoad);
   window.addEventListener("message", (event) => {
