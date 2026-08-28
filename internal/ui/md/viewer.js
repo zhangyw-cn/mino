@@ -1,7 +1,7 @@
 (function () {
   const { preprocessMath, escapeHtml } = globalThis.MinoMDPreprocess;
   const { ensureHeadingIds } = globalThis.MinoMDToc;
-  const { createMermaidBlock } = globalThis.MinoMDMermaidBlock;
+  const { createMermaidBlock, closeMermaidFullscreen } = globalThis.MinoMDMermaidBlock;
   const {
     readPreviewWidth,
     applyPreviewWidth,
@@ -198,6 +198,7 @@
       ADD_ATTR: ["class", "id"],
       FORBID_TAGS: ["script", "iframe", "object", "embed", "form"],
     });
+    closeMermaidFullscreen();
     content.innerHTML = clean;
 
     content.querySelectorAll("a[href]").forEach((a) => {
@@ -253,8 +254,20 @@
     buildToc(content);
   }
 
+  function failPathChange(rel, msg) {
+    closeMermaidFullscreen();
+    content.innerHTML = "";
+    content.setAttribute("data-path", rel);
+    currentRel = rel;
+    buildToc(content);
+    window.scrollTo(0, 0);
+    showError(msg);
+    postPreview(session && session.previewReadyMessage(rel));
+  }
+
   async function loadAndPaint(rel, mode) {
     const gen = ++requestGen;
+    closeMermaidFullscreen();
     let source;
     try {
       const res = await fetch("/api/raw/" + encodePath(rel), { cache: "no-store" });
@@ -266,11 +279,7 @@
         postPreview(session && session.previewErrorMessage(rel));
         return;
       }
-      content.innerHTML = "";
-      content.setAttribute("data-path", rel);
-      currentRel = rel;
-      showError("Failed to load markdown.");
-      postPreview(session && session.previewReadyMessage(rel));
+      failPathChange(rel, "Failed to load markdown.");
       return;
     }
 
@@ -284,11 +293,7 @@
         postPreview(session && session.previewErrorMessage(rel));
         return;
       }
-      content.innerHTML = "";
-      content.setAttribute("data-path", rel);
-      currentRel = rel;
-      showError("Failed to parse markdown.");
-      postPreview(session && session.previewReadyMessage(rel));
+      failPathChange(rel, "Failed to parse markdown.");
       return;
     }
     if (gen !== requestGen) return;

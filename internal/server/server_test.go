@@ -211,10 +211,14 @@ func TestViewerPipelineMarkers(t *testing.T) {
 		"preview-reload",
 		"requestGen",
 		"scrollTo",
+		"closeMermaidFullscreen",
 	} {
 		if !strings.Contains(js, marker) {
 			t.Fatalf("viewer.js missing %q", marker)
 		}
+	}
+	if strings.Count(js, "buildToc(content)") < 2 {
+		t.Fatal("viewer.js must call buildToc(content) on path-change failure as well as successful paint")
 	}
 
 	cssRes, err := http.Get(ts.URL + "/md/viewer.css")
