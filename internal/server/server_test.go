@@ -204,6 +204,13 @@ func TestViewerPipelineMarkers(t *testing.T) {
 		"MinoMDPreviewWidth",
 		"data-md-width",
 		"parsePreviewWidthMessage",
+		"MinoPreviewSession",
+		"previewReadyMessage",
+		"previewErrorMessage",
+		"preview-navigate",
+		"preview-reload",
+		"requestGen",
+		"scrollTo",
 	} {
 		if !strings.Contains(js, marker) {
 			t.Fatalf("viewer.js missing %q", marker)
@@ -876,10 +883,18 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 		"preview-pending",
 		"setPreviewPending",
 		"openFile(currentPath, true)",
+		"previewNavigateMessage",
+		"previewReloadMessage",
+		"parsePreviewMessage",
+		"preview-ready",
 	} {
 		if !strings.Contains(js, marker) {
 			t.Fatalf("app.js missing contract %q", marker)
 		}
+	}
+	if !strings.Contains(js, `parsed.type === "preview-ready"`) &&
+		!strings.Contains(js, `parsed.type === 'preview-ready'`) {
+		t.Fatal("app.js must reveal in-place kinds on preview-ready")
 	}
 	if strings.Contains(js, `"◇"`) || strings.Contains(js, "'◇'") {
 		t.Fatal("app.js must not use diamond file glyphs")

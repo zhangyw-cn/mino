@@ -54,8 +54,8 @@ ignore = ["archive/**"]
 - **Explorer** lists catalogued HTML and Markdown files. Collapse it from the activity bar.
 - **Command Center** (top bar) shows the workspace name. Click it, or press **Ctrl/Cmd+E** or **Ctrl/Cmd+P** (also works while the preview iframe is focused), to open **Quick Open**.
 - **Quick Open** fuzzy-filters by filename. An empty query lists session recents (up to 10). Enter or click opens the file, expands its tree ancestors, and closes the overlay. Escape dismisses it.
-- **Preview** loads the selected file in an iframe. Breadcrumbs show the relative path.
-- **Live reload** watches the workspace. Added / removed / changed files update the tree; a change to the open file reloads the iframe, and a removal clears the preview. If the watcher cannot start, a banner asks you to refresh manually.
+- **Preview** loads the selected file in an iframe. Clicking the already-open file does not reload it. Markdown-to-Markdown opens reuse the viewer document (old body stays until the new render is ready). Breadcrumbs show the relative path.
+- **Live reload** watches the workspace. Added / removed / changed files update the tree; a change to the open Markdown file refetches in the existing viewer; a change to the open HTML file reloads the iframe; a removal clears the preview. If the watcher cannot start, a banner asks you to refresh manually.
 - **Same-tab refresh** reopens the file you were previewing. That path is stored in this tab’s `sessionStorage` under `mino-open-path`. A new tab on `/` starts with no file selected.
 
 The status bar is visible at the bottom. For `.md` files it exposes 标宽 / 较宽 / 全宽 (960px / 1400px / fill); the default is 较宽. The choice is stored in this origin’s `localStorage` under `mino-md-preview-width` and applies to all Markdown files.

@@ -7,6 +7,7 @@
     applyPreviewWidth,
     parsePreviewWidthMessage,
   } = globalThis.MinoMDPreviewWidth;
+  const session = globalThis.MinoPreviewSession;
 
   // data-md-width is applied here so first paint and postMessage stay in sync.
   applyPreviewWidth(document.documentElement, readPreviewWidth(localStorage));
@@ -160,38 +161,38 @@
     bindScrollSpy(items);
   }
 
-  async function render() {
-    const content = document.querySelector("#content");
-    const errorEl = document.querySelector("#error");
-    const rel = content.getAttribute("data-path");
+  const content = document.querySelector("#content");
+  const errorEl = document.querySelector("#error");
+  let requestGen = 0;
+  let currentRel = content.getAttribute("data-path") || "";
 
-    function showError(msg) {
-      errorEl.hidden = false;
-      errorEl.textContent = msg;
-    }
+  function showError(msg) {
+    errorEl.hidden = false;
+    errorEl.textContent = msg;
+  }
 
-    function encodePath(p) {
-      return p.split("/").map(encodeURIComponent).join("/");
-    }
+  function hideError() {
+    errorEl.hidden = true;
+    errorEl.textContent = "";
+  }
 
-    let source;
+  function encodePath(p) {
+    return p.split("/").map(encodeURIComponent).join("/");
+  }
+
+  function postPreview(message) {
+    if (!session || !message) return;
     try {
-      const res = await fetch("/api/raw/" + encodePath(rel), { cache: "no-store" });
-      if (!res.ok) throw new Error("HTTP " + res.status);
-      source = await res.text();
-    } catch (e) {
-      showError("Failed to load markdown.");
-      return;
-    }
+      parent.postMessage(message, window.location.origin);
+    } catch (_err) {}
+  }
 
-    let html;
-    try {
-      html = marked.parse(preprocessMath(source));
-    } catch (e) {
-      showError("Failed to parse markdown.");
-      return;
-    }
+  function isMarkdownPath(path) {
+    return session ? session.kindId(path) === "markdown" : /\.md$/i.test(path);
+  }
 
+  async function paintMarkdown(source) {
+    const html = marked.parse(preprocessMath(source));
     const clean = DOMPurify.sanitize(html, {
       USE_PROFILES: { html: true },
       ADD_ATTR: ["class", "id"],
@@ -252,5 +253,71 @@
     buildToc(content);
   }
 
-  render();
+  async function loadAndPaint(rel, mode) {
+    const gen = ++requestGen;
+    let source;
+    try {
+      const res = await fetch("/api/raw/" + encodePath(rel), { cache: "no-store" });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      source = await res.text();
+    } catch (_e) {
+      if (gen !== requestGen) return;
+      if (mode === "reload") {
+        postPreview(session && session.previewErrorMessage(rel));
+        return;
+      }
+      content.innerHTML = "";
+      content.setAttribute("data-path", rel);
+      currentRel = rel;
+      showError("Failed to load markdown.");
+      postPreview(session && session.previewReadyMessage(rel));
+      return;
+    }
+
+    const scrollX = mode === "reload" ? window.scrollX : 0;
+    const scrollY = mode === "reload" ? window.scrollY : 0;
+    try {
+      await paintMarkdown(source);
+    } catch (_e) {
+      if (gen !== requestGen) return;
+      if (mode === "reload") {
+        postPreview(session && session.previewErrorMessage(rel));
+        return;
+      }
+      content.innerHTML = "";
+      content.setAttribute("data-path", rel);
+      currentRel = rel;
+      showError("Failed to parse markdown.");
+      postPreview(session && session.previewReadyMessage(rel));
+      return;
+    }
+    if (gen !== requestGen) return;
+    hideError();
+    content.setAttribute("data-path", rel);
+    currentRel = rel;
+    if (mode === "reload") window.scrollTo(scrollX, scrollY);
+    else window.scrollTo(0, 0);
+    postPreview(session && session.previewReadyMessage(rel));
+  }
+
+  window.addEventListener("message", (event) => {
+    if (!session) return;
+    const parsed = session.parsePreviewMessage(
+      event.data,
+      event.origin,
+      window.location.origin
+    );
+    if (!parsed) return;
+    if (parsed.type === "preview-navigate") {
+      if (!isMarkdownPath(parsed.path)) return;
+      loadAndPaint(parsed.path, "navigate");
+      return;
+    }
+    if (parsed.type === "preview-reload") {
+      if (parsed.path !== currentRel) return;
+      loadAndPaint(parsed.path, "reload");
+    }
+  });
+
+  loadAndPaint(currentRel, "initial");
 })();

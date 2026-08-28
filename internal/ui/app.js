@@ -140,8 +140,24 @@
     syncMdWidthControl();
     persistOpenPath(path);
     if (action === "skip") return;
+    if (action === "in-place" && previewSession) {
+      const message =
+        force && path === fromPath
+          ? previewSession.previewReloadMessage(path)
+          : previewSession.previewNavigateMessage(path);
+      postPreviewToFrame(message);
+      return;
+    }
     setPreviewPending(true);
     preview.src = previewURL(path);
+  }
+
+  function postPreviewToFrame(message) {
+    const frame = preview.contentWindow;
+    if (!frame || !message) return;
+    try {
+      frame.postMessage(message, window.location.origin);
+    } catch (_err) {}
   }
 
   function clearPreview() {
@@ -683,9 +699,22 @@
   function onPreviewLoad() {
     bindPreviewHotkeys();
     postMdWidthToPreview();
+    if (previewSession && previewSession.inPlace(currentPath)) return;
     revealPreviewIfCurrent(currentPath);
   }
   preview.addEventListener("load", onPreviewLoad);
+  window.addEventListener("message", (event) => {
+    if (!previewSession) return;
+    const parsed = previewSession.parsePreviewMessage(
+      event.data,
+      event.origin,
+      window.location.origin
+    );
+    if (!parsed) return;
+    if (parsed.type === "preview-ready") {
+      revealPreviewIfCurrent(parsed.path);
+    }
+  });
 
   function hideBackdrop(event) {
     if (event && quickOpenBackdrop.hasPointerCapture(event.pointerId)) {
