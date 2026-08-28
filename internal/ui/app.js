@@ -25,6 +25,10 @@
   if (!openPath) {
     console.error("MinoOpenPath is missing; preview restore is disabled");
   }
+  const previewSession = globalThis.MinoPreviewSession;
+  if (!previewSession) {
+    console.error("MinoPreviewSession is missing; preview updates always navigate");
+  }
   const mdWidthWrap = document.querySelector("#md-width-wrap");
   const mdWidthButton = document.querySelector("#md-width-button");
   const mdWidthMenu = document.querySelector("#md-width-menu");
@@ -33,6 +37,7 @@
 
   const expandedPaths = new Set([""]);
   let currentPath = "";
+  let displayedPath = "";
   let listingAbort = null;
   let listingRequestId = 0;
   let lastTree = null;
@@ -99,20 +104,50 @@
     recents = recents.filter((item) => item !== path);
   }
 
-  function openFile(path) {
+  function setPreviewPending(pending) {
+    preview.classList.toggle("preview-pending", !!pending);
+  }
+
+  function revealPreviewIfCurrent(path) {
+    if (path !== currentPath) return;
+    displayedPath = path;
+    setPreviewPending(false);
+  }
+
+  function decideOpenAction(fromPath, toPath, force) {
+    if (!previewSession) {
+      if (toPath === fromPath && !force) return "skip";
+      return "navigate";
+    }
+    return previewSession.decidePreviewAction({
+      fromPath: fromPath,
+      toPath: toPath,
+      force: !!force,
+      displayedPath: displayedPath,
+      navigatePending: preview.classList.contains("preview-pending"),
+    });
+  }
+
+  function openFile(path, force) {
+    const fromPath = currentPath;
+    const action = decideOpenAction(fromPath, path, force);
     rememberOpen(path);
     currentPath = path;
     setBreadcrumb(path);
-    preview.src = previewURL(path);
     preview.hidden = false;
     emptyState.hidden = true;
     markSelection();
     syncMdWidthControl();
     persistOpenPath(path);
+    if (action === "skip") return;
+    setPreviewPending(true);
+    preview.src = previewURL(path);
   }
 
   function clearPreview() {
     currentPath = "";
+    displayedPath = "";
+    setPreviewPending(false);
     preview.removeAttribute("src");
     preview.hidden = true;
     emptyState.hidden = false;
@@ -648,6 +683,7 @@
   function onPreviewLoad() {
     bindPreviewHotkeys();
     postMdWidthToPreview();
+    revealPreviewIfCurrent(currentPath);
   }
   preview.addEventListener("load", onPreviewLoad);
 
@@ -696,7 +732,7 @@
       if (kind === "removed") forgetPath(event.path);
       loadTree();
       if (event.path !== currentPath) return;
-      if (kind === "changed") preview.src = previewURL(currentPath);
+      if (kind === "changed") openFile(currentPath, true);
       if (kind === "removed") clearPreview();
     });
   }

@@ -870,6 +870,12 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 		"scrollIntoView",
 		"writeOpenPath",
 		"clearOpenPath",
+		"MinoPreviewSession",
+		"decidePreviewAction",
+		"displayedPath",
+		"preview-pending",
+		"setPreviewPending",
+		"openFile(currentPath, true)",
 	} {
 		if !strings.Contains(js, marker) {
 			t.Fatalf("app.js missing contract %q", marker)
@@ -904,6 +910,9 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 	}
 	if strings.Contains(js, "history.pushState") || strings.Contains(js, "history.replaceState") {
 		t.Fatal("app.js must not change history for the open path")
+	}
+	if strings.Contains(js, `if (kind === "changed") preview.src`) {
+		t.Fatal("SSE changed must not assign preview.src directly")
 	}
 	loadTreeStart := strings.Index(js, "async function loadTree")
 	loadMetaStart := strings.Index(js, "async function loadMeta")
@@ -974,6 +983,8 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 		"height: 22px",
 		"#md-width-menu",
 		"#md-width-wrap",
+		"#preview.preview-pending",
+		"visibility: hidden",
 	} {
 		if !strings.Contains(css, marker) {
 			t.Fatalf("style.css missing contract %q", marker)
@@ -981,6 +992,9 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 	}
 	if strings.Contains(css, ".quick-open-chip") {
 		t.Fatal("style.css must not include .quick-open-chip")
+	}
+	if strings.Contains(css, "background: #ffffff") {
+		t.Fatal("style.css must not paint the iframe white")
 	}
 	statusIdx := strings.Index(css, ".status-bar {")
 	if statusIdx < 0 {

@@ -427,8 +427,12 @@ body.sidebar-collapsed .sidebar {
   width: 100%;
   min-height: 0;
   flex: 1;
-  background: #ffffff;
+  background: var(--bg-shell);
   border: 0;
+}
+#preview.preview-pending {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .empty-state {
