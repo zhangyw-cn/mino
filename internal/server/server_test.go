@@ -220,6 +220,14 @@ func TestViewerPipelineMarkers(t *testing.T) {
 	if strings.Count(js, "buildToc(content)") < 2 {
 		t.Fatal("viewer.js must call buildToc(content) on path-change failure as well as successful paint")
 	}
+	if !strings.Contains(js, "if (gen !== requestGen) return") {
+		t.Fatal(`viewer.js missing "if (gen !== requestGen) return"`)
+	}
+	if !strings.Contains(js, `if (gen !== requestGen) return;
+
+    const scrollX`) {
+		t.Fatal("viewer.js must drop a stale generation after a successful fetch before paintMarkdown")
+	}
 
 	cssRes, err := http.Get(ts.URL + "/md/viewer.css")
 	if err != nil {

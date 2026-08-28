@@ -191,13 +191,14 @@
     return session ? session.kindId(path) === "markdown" : /\.md$/i.test(path);
   }
 
-  async function paintMarkdown(source) {
+  async function paintMarkdown(source, gen) {
     const html = marked.parse(preprocessMath(source));
     const clean = DOMPurify.sanitize(html, {
       USE_PROFILES: { html: true },
       ADD_ATTR: ["class", "id"],
       FORBID_TAGS: ["script", "iframe", "object", "embed", "form"],
     });
+    if (gen !== requestGen) return;
     closeMermaidFullscreen();
     content.innerHTML = clean;
 
@@ -233,6 +234,7 @@
 
     const mermaidBlocks = content.querySelectorAll("pre code.language-mermaid");
     if (mermaidBlocks.length) {
+      if (gen !== requestGen) return;
       mermaid.initialize({ startOnLoad: false, theme: "dark", securityLevel: "strict" });
       const instances = [];
       for (const block of mermaidBlocks) {
@@ -282,11 +284,12 @@
       failPathChange(rel, "Failed to load markdown.");
       return;
     }
+    if (gen !== requestGen) return;
 
     const scrollX = mode === "reload" ? window.scrollX : 0;
     const scrollY = mode === "reload" ? window.scrollY : 0;
     try {
-      await paintMarkdown(source);
+      await paintMarkdown(source, gen);
     } catch (_e) {
       if (gen !== requestGen) return;
       if (mode === "reload") {
