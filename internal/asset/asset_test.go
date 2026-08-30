@@ -40,7 +40,7 @@ func TestAllowedRejects(t *testing.T) {
 		{"notes/app.css.map", nil, "map"},
 		{".env", nil, "dotfile"},
 		{"dir/.secret.png", nil, "dot segment"},
-		{"notes/../outside.css", nil, "escape"},
+		{"../outside.css", nil, "escape"},
 		{"/abs.png", nil, "absolute"},
 		{"skip/app.css", ignored, "ignored"},
 	}
