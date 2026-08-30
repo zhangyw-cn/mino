@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/zhangyw-cn/mino/internal/asset"
 	"github.com/zhangyw-cn/mino/internal/catalog"
 	"github.com/zhangyw-cn/mino/internal/ui"
 )
@@ -133,18 +134,26 @@ func (s *Server) metaHandler(w http.ResponseWriter, _ *http.Request) {
 func (s *Server) appsHandler(w http.ResponseWriter, r *http.Request) {
 	raw := strings.TrimPrefix(r.URL.Path, "/apps/")
 	rel, err := catalog.NormalizeRel(raw)
-	if err != nil || rel == "" || !s.cat.Has(rel) {
+	if err != nil || rel == "" {
 		http.NotFound(w, r)
 		return
 	}
-	switch {
-	case catalog.IsHTML(rel):
-		s.serveAppFile(w, r, rel)
-	case catalog.IsMarkdown(rel):
-		s.serveMarkdownViewer(w, r, rel)
-	default:
-		http.NotFound(w, r)
+	if s.cat.Has(rel) {
+		switch {
+		case catalog.IsHTML(rel):
+			s.serveAppFile(w, r, rel)
+		case catalog.IsMarkdown(rel):
+			s.serveMarkdownViewer(w, r, rel)
+		default:
+			http.NotFound(w, r)
+		}
+		return
 	}
+	if asset.Allowed(rel, s.cat.Ignored) {
+		s.serveAssetFile(w, r, rel)
+		return
+	}
+	http.NotFound(w, r)
 }
 
 func (s *Server) statRegularRel(rel string) (os.FileInfo, error) {
@@ -187,6 +196,31 @@ func (s *Server) serveAppFile(w http.ResponseWriter, r *http.Request, rel string
 		http.NotFound(w, r)
 		return
 	}
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	http.ServeContent(w, r, rel, info.ModTime(), file)
+}
+
+func (s *Server) serveAssetFile(w http.ResponseWriter, r *http.Request, rel string) {
+	root, err := os.OpenRoot(s.root)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	defer root.Close()
+
+	file, err := root.Open(rel)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	defer file.Close()
+
+	info, err := file.Stat()
+	if err != nil || !info.Mode().IsRegular() {
+		http.NotFound(w, r)
+		return
+	}
+	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	http.ServeContent(w, r, rel, info.ModTime(), file)
 }

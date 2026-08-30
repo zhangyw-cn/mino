@@ -108,6 +108,91 @@ func TestTreeSearchAndApps(t *testing.T) {
 	}
 }
 
+func TestCompanionAssets(t *testing.T) {
+	_, ts, root := newTestServer(t)
+	defer ts.Close()
+
+	if err := os.WriteFile(filepath.Join(root, "notes", "app.css"), []byte("body{color:red}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "notes", "secret.go"), []byte("package n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, "notes", ".hidden"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "notes", ".hidden", "x.png"), []byte("png"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := http.Get(ts.URL + "/apps/notes/app.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := io.ReadAll(res.Body)
+	res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("app.css status %d", res.StatusCode)
+	}
+	if string(body) != "body{color:red}" {
+		t.Fatalf("app.css body = %q", body)
+	}
+	if res.Header.Get("Cache-Control") != "no-store" {
+		t.Fatalf("Cache-Control = %q, want no-store", res.Header.Get("Cache-Control"))
+	}
+	if res.Header.Get("X-Content-Type-Options") != "nosniff" {
+		t.Fatal("missing nosniff")
+	}
+
+	res, err = http.Get(ts.URL + "/apps/notes/a.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ = io.ReadAll(res.Body)
+	res.Body.Close()
+	if !strings.Contains(string(body), "<h1>hi</h1>") {
+		t.Fatal("catalog HTML must still be served")
+	}
+	if res.Header.Get("Cache-Control") == "no-store" {
+		t.Fatal("catalog HTML must not gain asset no-store")
+	}
+
+	res, err = http.Get(ts.URL + "/apps/notes/readme.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ = io.ReadAll(res.Body)
+	res.Body.Close()
+	if !strings.Contains(string(body), `data-path="notes/readme.md"`) {
+		t.Fatal("markdown must remain the viewer")
+	}
+
+	for _, url := range []string{
+		"/apps/notes/secret.go",
+		"/apps/notes/.hidden/x.png",
+		"/apps/missing.css",
+	} {
+		res, err = http.Get(ts.URL + url)
+		if err != nil {
+			t.Fatal(err)
+		}
+		res.Body.Close()
+		if res.StatusCode != http.StatusNotFound {
+			t.Fatalf("%s status %d, want 404", url, res.StatusCode)
+		}
+	}
+
+	res, err = http.Get(ts.URL + "/api/tree")
+	if err != nil {
+		t.Fatal(err)
+	}
+	treeBody, _ := io.ReadAll(res.Body)
+	res.Body.Close()
+	if strings.Contains(string(treeBody), "app.css") {
+		t.Fatal("tree must not list companion css")
+	}
+}
+
 func TestMDVendorAssetsServed(t *testing.T) {
 	_, ts, _ := newTestServer(t)
 	defer ts.Close()
