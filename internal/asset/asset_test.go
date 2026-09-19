@@ -40,6 +40,7 @@ func TestAllowedRejects(t *testing.T) {
 		{"notes/app.css.map", nil, "map"},
 		{".env", nil, "dotfile"},
 		{"dir/.secret.png", nil, "dot segment"},
+		{"dir/.hidden/x.png", nil, "dot directory"},
 		{"../outside.css", nil, "escape"},
 		{"/abs.png", nil, "absolute"},
 		{"skip/app.css", ignored, "ignored"},
@@ -48,6 +49,9 @@ func TestAllowedRejects(t *testing.T) {
 		if asset.Allowed(tc.rel, tc.fn) {
 			t.Fatalf("%s: Allowed(%q) = true, want false", tc.name, tc.rel)
 		}
+	}
+	if !asset.Allowed("notes/../file.css", nil) {
+		t.Fatal("in-root .. after Clean must remain allowed")
 	}
 }
 

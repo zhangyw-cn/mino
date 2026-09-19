@@ -318,3 +318,41 @@ func TestWatcherIgnoresNonAssets(t *testing.T) {
 	case <-timeout.C:
 	}
 }
+
+func TestWatcherIgnoresIgnoredAssets(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "node_modules", "pkg"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	matcher, err := ignore.New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cat := catalog.New(root, matcher)
+	if err := cat.Scan(); err != nil {
+		t.Fatal(err)
+	}
+	events := make(chan catalog.Event, 8)
+
+	w, err := watcher.Start(root, cat, func(batch []catalog.Event) {
+		for _, event := range batch {
+			events <- event
+		}
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer w.Close()
+
+	if err := os.WriteFile(filepath.Join(root, "node_modules", "pkg", "x.css"), []byte("a{}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	timeout := time.NewTimer(300 * time.Millisecond)
+	defer timeout.Stop()
+	select {
+	case got := <-events:
+		t.Fatalf("unexpected event for ignored css %+v", got)
+	case <-timeout.C:
+	}
+}

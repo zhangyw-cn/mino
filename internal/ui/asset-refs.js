@@ -55,18 +55,33 @@
     return posixNormalize(joined);
   }
 
+  // Mask Markdown fenced code so fence samples do not become reload refs.
+  function maskMarkdownFences(source) {
+    return String(source).replace(
+      /(^|\n)([ \t]{0,3})(`{3,}|~{3,})[^\n]*\n[\s\S]*?(?:\n\2\3[^\n]*(?=\n|$)|$)/g,
+      (match) => match.replace(/[^\n]/g, " ")
+    );
+  }
+
+  function pushURL(out, value) {
+    if (typeof value !== "string") return;
+    const trimmed = value.trim();
+    if (trimmed) out.push(trimmed);
+  }
+
   function extractURLs(source) {
     if (typeof source !== "string" || !source) return [];
+    const text = maskMarkdownFences(source);
     const out = [];
     const attr = /\b(?:src|href|poster)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi;
     let m;
-    while ((m = attr.exec(source))) out.push(m[1] || m[2] || m[3] || "");
+    while ((m = attr.exec(text))) pushURL(out, m[1] || m[2] || m[3] || "");
     const urlFn = /url\(\s*(?:"([^"]*)"|'([^']*)'|([^)]+?))\s*\)/gi;
-    while ((m = urlFn.exec(source))) out.push((m[1] || m[2] || m[3] || "").trim());
+    while ((m = urlFn.exec(text))) pushURL(out, m[1] || m[2] || m[3] || "");
     const imp = /@import\s+(?:url\(\s*)?(?:"([^"]*)"|'([^']*)')/gi;
-    while ((m = imp.exec(source))) out.push(m[1] || m[2] || "");
+    while ((m = imp.exec(text))) pushURL(out, m[1] || m[2] || "");
     const md = /!?\[[^\]]*\]\(\s*<?([^)\s>]+)/g;
-    while ((m = md.exec(source))) out.push(m[1]);
+    while ((m = md.exec(text))) pushURL(out, m[1]);
     return out;
   }
 
@@ -82,5 +97,5 @@
     return seen;
   }
 
-  return { extractURLs, resolveRef, referencedPaths };
+  return { extractURLs, resolveRef, referencedPaths, maskMarkdownFences };
 });

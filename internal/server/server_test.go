@@ -1025,6 +1025,9 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 		"referencedPaths",
 		"refreshAssetRefs",
 		"referencedAssets",
+		"pendingAssetEvents",
+		"assetScanPending",
+		"flushPendingAssetEvents",
 		`["asset-changed", "asset-removed"]`,
 		"referencedAssets.has(event.path)",
 	} {

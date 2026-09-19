@@ -178,30 +178,14 @@ func (s *Server) statRegularRel(rel string) (os.FileInfo, error) {
 }
 
 func (s *Server) serveAppFile(w http.ResponseWriter, r *http.Request, rel string) {
-	root, err := os.OpenRoot(s.root)
-	if err != nil {
-		http.NotFound(w, r)
-		return
-	}
-	defer root.Close()
-
-	file, err := root.Open(rel)
-	if err != nil {
-		http.NotFound(w, r)
-		return
-	}
-	defer file.Close()
-
-	info, err := file.Stat()
-	if err != nil || !info.Mode().IsRegular() {
-		http.NotFound(w, r)
-		return
-	}
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-	http.ServeContent(w, r, rel, info.ModTime(), file)
+	s.serveRegularFile(w, r, rel, "")
 }
 
 func (s *Server) serveAssetFile(w http.ResponseWriter, r *http.Request, rel string) {
+	s.serveRegularFile(w, r, rel, "no-store")
+}
+
+func (s *Server) serveRegularFile(w http.ResponseWriter, r *http.Request, rel string, cacheControl string) {
 	root, err := os.OpenRoot(s.root)
 	if err != nil {
 		http.NotFound(w, r)
@@ -221,7 +205,9 @@ func (s *Server) serveAssetFile(w http.ResponseWriter, r *http.Request, rel stri
 		http.NotFound(w, r)
 		return
 	}
-	w.Header().Set("Cache-Control", "no-store")
+	if cacheControl != "" {
+		w.Header().Set("Cache-Control", cacheControl)
+	}
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	http.ServeContent(w, r, rel, info.ModTime(), file)
 }

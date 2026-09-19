@@ -275,8 +275,15 @@ func TestE2ECompanionAssetsAndSSE(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("GET /api/events: status = %d", res.StatusCode)
+	}
+	if contentType := res.Header.Get("Content-Type"); !strings.HasPrefix(contentType, "text/event-stream") {
+		t.Fatalf("content type = %q, want text/event-stream", contentType)
+	}
 
 	lines := make(chan string)
+	readErrs := make(chan error, 1)
 	go func() {
 		defer close(lines)
 		scanner := bufio.NewScanner(res.Body)
@@ -287,40 +294,54 @@ func TestE2ECompanionAssetsAndSSE(t *testing.T) {
 				return
 			}
 		}
+		if err := scanner.Err(); err != nil {
+			readErrs <- err
+		}
 	}()
+
+	waitAssetEvent := func(kind, wantPath string) {
+		t.Helper()
+		timeout := time.After(10 * time.Second)
+		var saw bool
+		var payload string
+		for !saw || payload == "" {
+			select {
+			case line, ok := <-lines:
+				if !ok {
+					t.Fatalf("event stream closed before %s", kind)
+				}
+				switch {
+				case line == "event: "+kind:
+					saw = true
+				case saw && strings.HasPrefix(line, "data: "):
+					payload = strings.TrimPrefix(line, "data: ")
+				}
+			case err := <-readErrs:
+				t.Fatalf("read event stream: %v", err)
+			case <-timeout:
+				t.Fatalf("timed out waiting for %s", kind)
+			}
+		}
+		var event struct {
+			Path string `json:"path"`
+		}
+		if err := json.Unmarshal([]byte(payload), &event); err != nil {
+			t.Fatalf("decode event data %q: %v", payload, err)
+		}
+		if event.Path != wantPath {
+			t.Fatalf("path = %q, want %s", event.Path, wantPath)
+		}
+	}
 
 	if err := os.WriteFile(filepath.Join(root, "tools", "app.css"), []byte("body{color:red}"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	waitAssetEvent("asset-changed", "tools/app.css")
 
-	timeout := time.After(10 * time.Second)
-	var saw bool
-	var payload string
-	for !saw || payload == "" {
-		select {
-		case line, ok := <-lines:
-			if !ok {
-				t.Fatal("event stream closed before asset-changed")
-			}
-			switch {
-			case line == "event: asset-changed":
-				saw = true
-			case saw && strings.HasPrefix(line, "data: "):
-				payload = strings.TrimPrefix(line, "data: ")
-			}
-		case <-timeout:
-			t.Fatal("timed out waiting for asset-changed")
-		}
-	}
-	var event struct {
-		Path string `json:"path"`
-	}
-	if err := json.Unmarshal([]byte(payload), &event); err != nil {
+	if err := os.Remove(filepath.Join(root, "tools", "app.css")); err != nil {
 		t.Fatal(err)
 	}
-	if event.Path != "tools/app.css" {
-		t.Fatalf("path = %q, want tools/app.css", event.Path)
-	}
+	waitAssetEvent("asset-removed", "tools/app.css")
 }
 
 func assertTreeContains(t *testing.T, url string, wantFiles ...string) {

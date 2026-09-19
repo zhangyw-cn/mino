@@ -22,6 +22,7 @@ test("resolveRef skips non-workspace", () => {
   assert.equal(resolveRef("docs/a.md", "/foo.png"), null);
   assert.equal(resolveRef("docs/a.md", "../../../etc/passwd"), null);
   assert.equal(resolveRef("docs/a.md", "mailto:a@b.c"), null);
+  assert.equal(resolveRef("docs/a.md", "javascript:alert(1)"), null);
 });
 
 test("resolveRef strips query and hash", () => {
@@ -42,6 +43,14 @@ style="background:url(d.webp)"
   for (const want of ["a.css", "b.png", "c.jpg", "d.webp", "e.css", "f.css", "g.png", "h.js"]) {
     assert.ok(urls.includes(want), `missing ${want} in ${JSON.stringify(urls)}`);
   }
+  assert.ok(!urls.includes(""), "must not include empty strings");
+});
+
+test("extractURLs ignores markdown fences", () => {
+  const src = "See ![real](real.png)\n\n```md\n![fake](fake.png)\n```\n";
+  const urls = extractURLs(src);
+  assert.ok(urls.includes("real.png"));
+  assert.ok(!urls.includes("fake.png"), `fence leak: ${JSON.stringify(urls)}`);
 });
 
 test("referencedPaths unique", () => {

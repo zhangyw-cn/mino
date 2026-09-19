@@ -71,7 +71,7 @@ Markdown is rendered through a sanitized viewer (not a raw executable document):
 
 **Only use workspaces you trust.** Previewed HTML files are served from the same origin as the Mino UI and run inside an iframe without a `sandbox` attribute, so they keep access to `localStorage`, cookies, and the same origin's endpoints. That means a previewed page can call `/api/*` (including `/api/raw/*.md` for catalog Markdown source) and read any file exposed under `/apps/*`, and it can read or overwrite browser storage belonging to other apps in the same workspace. This is deliberate: sandboxing would break the self-contained apps Mino exists to run, which commonly persist state in `localStorage`.
 
-Allowlisted companion files are served from the same origin under `/apps/` as well.
+Allowlisted companion files are served from the same origin under `/apps/` as well. That includes `json` and `wasm` on the allowlist, so treat config or build artifacts in the workspace as readable by any previewed HTML app.
 
 Markdown sanitization is not a security boundary for untrusted files. Only preview Markdown from trusted workspaces.
 

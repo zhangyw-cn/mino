@@ -52,6 +52,8 @@
   let pickerRows = [];
   let referencedAssets = new Set();
   let assetScanGen = 0;
+  let assetScanPending = false;
+  let pendingAssetEvents = new Set();
 
   function previewURL(path) {
     const encoded = path.split("/").map(encodeURIComponent).join("/");
@@ -156,21 +158,39 @@
     return `/apps/${encoded}`;
   }
 
+  function flushPendingAssetEvents(forPath) {
+    const pending = pendingAssetEvents;
+    pendingAssetEvents = new Set();
+    assetScanPending = false;
+    if (!forPath || forPath !== currentPath) return;
+    for (const assetPath of pending) {
+      if (referencedAssets.has(assetPath)) {
+        openFile(currentPath, true);
+        return;
+      }
+    }
+  }
+
   function refreshAssetRefs(path) {
     const gen = ++assetScanGen;
+    pendingAssetEvents = new Set();
     if (!assetRefs || !path) {
       referencedAssets = new Set();
+      assetScanPending = false;
       return;
     }
+    assetScanPending = true;
     fetch(catalogSourceURL(path), { cache: "no-store" })
       .then((res) => (res.ok ? res.text() : Promise.reject()))
       .then((source) => {
         if (gen !== assetScanGen) return;
         referencedAssets = new Set(assetRefs.referencedPaths(path, source));
+        flushPendingAssetEvents(path);
       })
       .catch(() => {
         if (gen !== assetScanGen) return;
         referencedAssets = new Set();
+        flushPendingAssetEvents(path);
       });
   }
 
@@ -210,6 +230,8 @@
   function clearPreview() {
     currentPath = "";
     assetScanGen += 1;
+    assetScanPending = false;
+    pendingAssetEvents = new Set();
     referencedAssets = new Set();
     displayedPath = "";
     setPreviewPending(false);
@@ -825,8 +847,13 @@
         return;
       }
       if (!currentPath) return;
-      if (!referencedAssets.has(event.path)) return;
-      openFile(currentPath, true);
+      if (referencedAssets.has(event.path)) {
+        openFile(currentPath, true);
+        return;
+      }
+      if (assetScanPending) {
+        pendingAssetEvents.add(event.path);
+      }
     });
   }
 

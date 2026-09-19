@@ -59,7 +59,7 @@ Do not change `/api/raw/`, Quick Open ranking, Markdown CSP, or preview-session 
 - Consumes: `catalog.NormalizeRel`
 - Produces: `asset.Allowed(rel string, ignored func(string) bool) bool`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `internal/asset/asset_test.go`:
 
@@ -131,13 +131,13 @@ func TestAllowedUsesIgnoreMatcher(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `go test ./internal/asset/`
 
 Expected: FAIL with `package internal/asset is not in std` or `no required module provides package`
 
-- [ ] **Step 3: Implement `Allowed`**
+- [x] **Step 3: Implement `Allowed`**
 
 Create `internal/asset/asset.go`:
 
@@ -187,13 +187,13 @@ func hasDotSegment(rel string) bool {
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `go test ./internal/asset/`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/asset/asset.go internal/asset/asset_test.go
@@ -212,7 +212,7 @@ git commit -m "feat(asset): add companion file allowlist"
 - Consumes: `asset.Allowed(rel, s.cat.Ignored)`
 - Produces: `GET /apps/<rel>` 200 for allowlisted regular files with `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`
 
-- [ ] **Step 1: Write the failing server tests**
+- [x] **Step 1: Write the failing server tests**
 
 Add to `internal/server/server_test.go` (after `TestTreeSearchAndApps`):
 
@@ -303,13 +303,13 @@ func TestCompanionAssets(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `go test ./internal/server/ -run TestCompanionAssets`
 
 Expected: FAIL `app.css status 404`
 
-- [ ] **Step 3: Implement serving**
+- [x] **Step 3: Implement serving**
 
 In `internal/server/server.go`, add the import:
 
@@ -375,13 +375,13 @@ func (s *Server) serveAssetFile(w http.ResponseWriter, r *http.Request, rel stri
 }
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 Run: `go test ./internal/server/ -run 'TestCompanionAssets|TestTreeSearchAndApps|TestMarkdownAppsAndRaw'`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/server/server.go internal/server/server_test.go
@@ -401,7 +401,7 @@ git commit -m "feat(server): serve allowlisted companion files under /apps"
 - Consumes: `asset.Allowed`, `catalog.Ignored`
 - Produces: `catalog.EventAssetChanged` (`"asset-changed"`), `catalog.EventAssetRemoved` (`"asset-removed"`); published when `ApplyFSChange` returns no events
 
-- [ ] **Step 1: Write the failing watcher tests**
+- [x] **Step 1: Write the failing watcher tests**
 
 Append to `internal/watcher/watcher_test.go`:
 
@@ -501,13 +501,13 @@ func TestWatcherIgnoresNonAssets(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `go test ./internal/watcher/ -run 'TestWatcherEmitsAsset|TestWatcherIgnoresNonAssets'`
 
 Expected: FAIL (undefined `EventAssetChanged` and/or timeout waiting for css)
 
-- [ ] **Step 3: Add event kinds and watcher publish**
+- [x] **Step 3: Add event kinds and watcher publish**
 
 In `internal/catalog/catalog.go` constants:
 
@@ -586,13 +586,13 @@ if len(events) > 0 && w.onEvents != nil {
 
 with `w.publish(path, false)`.
 
-- [ ] **Step 4: Run watcher tests**
+- [x] **Step 4: Run watcher tests**
 
 Run: `go test ./internal/watcher/`
 
 Expected: PASS (including existing HTML tests)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/catalog/catalog.go internal/watcher/watcher.go internal/watcher/watcher_test.go
@@ -615,7 +615,7 @@ git commit -m "feat(watcher): emit asset-changed SSE without cataloging"
   - `resolveRef(fromFile, url) → string | null`
   - `referencedPaths(fromFile, source) → string[]` (unique, insertion order)
 
-- [ ] **Step 1: Write the failing Node tests**
+- [x] **Step 1: Write the failing Node tests**
 
 Create `internal/ui/testdata/asset_refs_test.mjs`:
 
@@ -702,13 +702,13 @@ func TestAssetRefs(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run Node tests to verify they fail**
+- [x] **Step 2: Run Node tests to verify they fail**
 
 Run: `go test ./internal/ui/ -run TestAssetRefs`
 
 Expected: FAIL (`Cannot find module` or node cannot load `asset-refs.js`)
 
-- [ ] **Step 3: Implement the helper**
+- [x] **Step 3: Implement the helper**
 
 Create `internal/ui/asset-refs.js`:
 
@@ -801,13 +801,13 @@ Create `internal/ui/asset-refs.js`:
 });
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `go test ./internal/ui/ -run TestAssetRefs`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/ui/asset-refs.js internal/ui/testdata/asset_refs_test.mjs internal/ui/asset_refs_node_test.go
@@ -829,7 +829,7 @@ git commit -m "feat(ui): add companion URL extract and resolve helper"
 - Consumes: `MinoAssetRefs.referencedPaths`, SSE `asset-changed` / `asset-removed`
 - Produces: `refreshAssetRefs(path)` in `app.js`; `referencedAssets` Set; `GET /asset-refs.js`
 
-- [ ] **Step 1: Write failing contracts**
+- [x] **Step 1: Write failing contracts**
 
 In `TestIndexHTMLHasIframeAndAppJS` marker list, add `"/asset-refs.js"`. After the `preview-session.js` order check, add:
 
@@ -869,13 +869,13 @@ After the marker loop, add:
 	}
 ```
 
-- [ ] **Step 2: Run contracts to verify they fail**
+- [x] **Step 2: Run contracts to verify they fail**
 
 Run: `go test ./internal/server/ -run 'TestIndexHTMLHasIframeAndAppJS|TestAppJSWorkbenchContracts|TestAssetRefsJSServed'`
 
 Expected: FAIL missing `/asset-refs.js` and/or `MinoAssetRefs`
 
-- [ ] **Step 3: Embed, route, and implement app.js**
+- [x] **Step 3: Embed, route, and implement app.js**
 
 `internal/ui/embed.go` first `go:embed` line:
 
@@ -997,13 +997,13 @@ After the existing `added`/`removed`/`changed` SSE loop, add:
   }
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 Run: `go test ./internal/server/ -run 'TestIndexHTMLHasIframeAndAppJS|TestAppJSWorkbenchContracts|TestAssetRefsJSServed|TestCompanionAssets'`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/ui/embed.go internal/ui/index.html internal/ui/app.js internal/server/server.go internal/server/server_test.go
@@ -1021,7 +1021,7 @@ git commit -m "feat(ui): reload preview when a referenced companion file changes
 - Consumes: `/apps/` asset serving, watcher `asset-changed`
 - Produces: e2e coverage that CSS/PNG are served and CSS writes emit `asset-changed` without appearing in the tree
 
-- [ ] **Step 1: Write the failing e2e test**
+- [x] **Step 1: Write the failing e2e test**
 
 Append to `internal/integration/e2e_test.go`:
 
@@ -1106,7 +1106,7 @@ func TestE2ECompanionAssetsAndSSE(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run to verify it fails** (if Task 3 is done it may already pass; if Task 3 is not done, FAIL)
+- [x] **Step 2: Run to verify it fails** (if Task 3 is done it may already pass; if Task 3 is not done, FAIL)
 
 Run: `go test ./internal/integration/ -run TestE2ECompanionAssetsAndSSE -count=1`
 
@@ -1114,15 +1114,15 @@ Expected: FAIL until Task 3 is merged; after Task 3+2: PASS
 
 If it PASSes on first run because earlier tasks landed, keep the test.
 
-- [ ] **Step 3: No extra implementation unless the test failed for a real bug; fix only if needed**
+- [x] **Step 3: No extra implementation unless the test failed for a real bug; fix only if needed**
 
-- [ ] **Step 4: Run full related suite**
+- [x] **Step 4: Run full related suite**
 
 Run: `go test ./internal/asset/ ./internal/watcher/ ./internal/server/ ./internal/integration/ ./internal/ui/`
 
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/integration/e2e_test.go
@@ -1144,7 +1144,7 @@ git commit -m "test: cover companion asset serving and asset-changed SSE"
 - Consumes: `/apps/` relative resolution
 - Produces: `mino ./example` demo for HTML+CSS and Markdown image
 
-- [ ] **Step 1: Add example files**
+- [x] **Step 1: Add example files**
 
 `example/tools/styled.css`:
 
@@ -1203,7 +1203,7 @@ After `## Outline demo` / nested heading, add:
 ![sample mark](./photo.svg)
 ```
 
-- [ ] **Step 2: Update README**
+- [x] **Step 2: Update README**
 
 Replace the `## Limitations` section with:
 
@@ -1223,19 +1223,19 @@ In `## Security`, after the paragraph about `/apps/*`, add one sentence:
 Allowlisted companion files are served from the same origin under `/apps/` as well.
 ```
 
-- [ ] **Step 3: Run tests that parse README/example? none required. Run `go test ./...`**
+- [x] **Step 3: Run tests that parse README/example? none required. Run `go test ./...`**
 
 Run: `go test ./...`
 
 Expected: PASS
 
-- [ ] **Step 4: Manual check**
+- [x] **Step 4: Manual check**
 
 Run: `go run ./cmd/mino ./example`
 
 Open the printed URL. Confirm Explorer has `styled.html` and `sample.md` but not `styled.css` / `photo.svg`. Open `tools/styled.html` and see styled card. Open `docs/sample.md` and see the blue SVG. Edit `example/tools/styled.css` on disk and confirm the HTML preview reloads.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add example/tools/styled.html example/tools/styled.css example/docs/photo.svg example/docs/sample.md README.md
