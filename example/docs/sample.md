@@ -8,13 +8,17 @@ Open this file in Mino (`go run ./cmd/mino ./example`) to exercise GFM, highligh
 
 This subsection exists so the right-side **On this page** outline can list `h1`–`h3` and exercise scroll spy.
 
+## Companion image
+
+![sample mark](./photo.svg)
+
 ## GFM table
 
 | Feature | Status |
 | --- | --- |
 | Tree + search | Indexed as `.md` |
 | Preview | Sanitized viewer iframe |
-| Companion images | Not served |
+| Companion images | Relative SVG via /apps/ |
 
 ## Task list
 

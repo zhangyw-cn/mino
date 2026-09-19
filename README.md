@@ -71,6 +71,8 @@ Markdown is rendered through a sanitized viewer (not a raw executable document):
 
 **Only use workspaces you trust.** Previewed HTML files are served from the same origin as the Mino UI and run inside an iframe without a `sandbox` attribute, so they keep access to `localStorage`, cookies, and the same origin's endpoints. That means a previewed page can call `/api/*` (including `/api/raw/*.md` for catalog Markdown source) and read any file exposed under `/apps/*`, and it can read or overwrite browser storage belonging to other apps in the same workspace. This is deliberate: sandboxing would break the self-contained apps Mino exists to run, which commonly persist state in `localStorage`.
 
+Allowlisted companion files are served from the same origin under `/apps/` as well.
+
 Markdown sanitization is not a security boundary for untrusted files. Only preview Markdown from trusted workspaces.
 
 Mino has no authentication and is intended for local use, binding to `127.0.0.1` by default. Do not change `host` to a public or LAN address unless you understand the exposure.
@@ -79,6 +81,6 @@ As a mitigation against DNS rebinding, requests are rejected with `403` unless t
 
 ## Limitations
 
-Only self-contained, single-file HTML apps are supported. Companion CSS, JavaScript, images, and other neighboring files are not served.
+HTML apps may load companion files from the workspace through relative URLs (the browser requests `/apps/<dir>/…`). Mino serves a fixed allowlist: `png` `jpg` `jpeg` `gif` `webp` `svg` `ico` `css` `js` `mjs` `woff` `woff2` `ttf` `otf` `json` `wasm`. Paths with a `.`-prefixed segment, ignore matches (including `.git` / `.mino` / `node_modules`), and other extensions 404.
 
-Markdown companion images and other assets are also not served, so relative images in `.md` files may break.
+Companion files do not appear in Explorer or Quick Open. Site-root URLs like `/images/x.png` are not mapped onto the workspace. Changing a CSS file that the open HTML references reloads the preview; files only mentioned inside that CSS (for example `url(bg.png)`) do not.
