@@ -3,7 +3,7 @@
 **Date:** 2026-09-19  
 **Status:** Approved for planning  
 **Scope:** Replace the embedded vanilla JS workbench and Markdown viewer with React + TypeScript  
-**Approach:** Single Vite package, dual entry points, Tailwind (no component library), `go:embed` of `web/dist`
+**Approach:** Single Vite package, dual entry points, Tailwind (no component library), build into `internal/ui/dist` for `go:embed`
 
 ## Problem
 
