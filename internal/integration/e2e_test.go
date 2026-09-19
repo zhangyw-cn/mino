@@ -244,6 +244,85 @@ func TestE2ESSEAnnouncesNewFile(t *testing.T) {
 	}
 }
 
+func TestE2ECompanionAssetsAndSSE(t *testing.T) {
+	root, cat, ts := startStack(t)
+
+	if err := os.MkdirAll(filepath.Join(root, "tools"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "tools", "app.css"), []byte("body{}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "pic.svg"), []byte(`<svg xmlns="http://www.w3.org/2000/svg"/>`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	assertBody(t, ts.URL+"/apps/tools/app.css", "body{}")
+	assertBodyContains(t, ts.URL+"/apps/pic.svg", "<svg")
+	if cat.Has("tools/app.css") || cat.Has("pic.svg") {
+		t.Fatal("assets must not enter the catalog")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, ts.URL+"/api/events", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	req.Header.Set("Accept", "text/event-stream")
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+
+	lines := make(chan string)
+	go func() {
+		defer close(lines)
+		scanner := bufio.NewScanner(res.Body)
+		for scanner.Scan() {
+			select {
+			case lines <- scanner.Text():
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	if err := os.WriteFile(filepath.Join(root, "tools", "app.css"), []byte("body{color:red}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	timeout := time.After(10 * time.Second)
+	var saw bool
+	var payload string
+	for !saw || payload == "" {
+		select {
+		case line, ok := <-lines:
+			if !ok {
+				t.Fatal("event stream closed before asset-changed")
+			}
+			switch {
+			case line == "event: asset-changed":
+				saw = true
+			case saw && strings.HasPrefix(line, "data: "):
+				payload = strings.TrimPrefix(line, "data: ")
+			}
+		case <-timeout:
+			t.Fatal("timed out waiting for asset-changed")
+		}
+	}
+	var event struct {
+		Path string `json:"path"`
+	}
+	if err := json.Unmarshal([]byte(payload), &event); err != nil {
+		t.Fatal(err)
+	}
+	if event.Path != "tools/app.css" {
+		t.Fatalf("path = %q, want tools/app.css", event.Path)
+	}
+}
+
 func assertTreeContains(t *testing.T, url string, wantFiles ...string) {
 	t.Helper()
 	var tree struct {
