@@ -15,9 +15,11 @@ import (
 type EventKind string
 
 const (
-	EventAdded   EventKind = "added"
-	EventRemoved EventKind = "removed"
-	EventChanged EventKind = "changed"
+	EventAdded         EventKind = "added"
+	EventRemoved       EventKind = "removed"
+	EventChanged       EventKind = "changed"
+	EventAssetChanged  EventKind = "asset-changed"
+	EventAssetRemoved  EventKind = "asset-removed"
 )
 
 type Event struct {

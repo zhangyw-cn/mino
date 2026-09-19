@@ -224,3 +224,97 @@ func waitForEvent(t *testing.T, events <-chan catalog.Event, want catalog.Event)
 		}
 	}
 }
+
+func TestWatcherEmitsAssetChangedWithoutCataloging(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "tools"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cat := newCatalog(t, root)
+	events := make(chan catalog.Event, 16)
+
+	w, err := watcher.Start(root, cat, func(batch []catalog.Event) {
+		for _, event := range batch {
+			events <- event
+		}
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer w.Close()
+
+	css := filepath.Join(root, "tools", "app.css")
+	if err := os.WriteFile(css, []byte("a"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	waitForEvent(t, events, catalog.Event{Kind: catalog.EventAssetChanged, Path: "tools/app.css"})
+	if cat.Has("tools/app.css") {
+		t.Fatal("css must not be a catalog entry")
+	}
+
+	if err := os.WriteFile(css, []byte("b"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	waitForEvent(t, events, catalog.Event{Kind: catalog.EventAssetChanged, Path: "tools/app.css"})
+
+	if err := os.Remove(css); err != nil {
+		t.Fatal(err)
+	}
+	waitForEvent(t, events, catalog.Event{Kind: catalog.EventAssetRemoved, Path: "tools/app.css"})
+}
+
+func TestWatcherStillEmitsHTMLChanged(t *testing.T) {
+	root := t.TempDir()
+	html := filepath.Join(root, "a.html")
+	if err := os.WriteFile(html, []byte("v1"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cat := newCatalog(t, root)
+	events := make(chan catalog.Event, 8)
+
+	w, err := watcher.Start(root, cat, func(batch []catalog.Event) {
+		for _, event := range batch {
+			events <- event
+		}
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer w.Close()
+
+	if err := os.WriteFile(html, []byte("v2"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	waitForEvent(t, events, catalog.Event{Kind: catalog.EventChanged, Path: "a.html"})
+}
+
+func TestWatcherIgnoresNonAssets(t *testing.T) {
+	root := t.TempDir()
+	cat := newCatalog(t, root)
+	events := make(chan catalog.Event, 8)
+
+	w, err := watcher.Start(root, cat, func(batch []catalog.Event) {
+		for _, event := range batch {
+			events <- event
+		}
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer w.Close()
+
+	if err := os.WriteFile(filepath.Join(root, "main.go"), []byte("package m"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".env"), []byte("x=1"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	timeout := time.NewTimer(300 * time.Millisecond)
+	defer timeout.Stop()
+	select {
+	case got := <-events:
+		t.Fatalf("unexpected event %+v", got)
+	case <-timeout.C:
+	}
+}

@@ -8,6 +8,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 
+	"github.com/zhangyw-cn/mino/internal/asset"
 	"github.com/zhangyw-cn/mino/internal/catalog"
 )
 
@@ -94,10 +95,38 @@ func (w *Watcher) handle(event fsnotify.Event) {
 		}
 	}
 
-	events := w.cat.ApplyFSChange(event.Name, removed)
+	w.publish(event.Name, removed)
+}
+
+func (w *Watcher) publish(absPath string, removed bool) {
+	events := w.cat.ApplyFSChange(absPath, removed)
+	if len(events) == 0 {
+		if ev, ok := w.assetEvent(absPath, removed); ok {
+			events = []catalog.Event{ev}
+		}
+	}
 	if len(events) > 0 && w.onEvents != nil {
 		w.onEvents(events)
 	}
+}
+
+func (w *Watcher) assetEvent(absPath string, removed bool) (catalog.Event, bool) {
+	rel, err := filepath.Rel(w.root, absPath)
+	if err != nil {
+		return catalog.Event{}, false
+	}
+	rel, err = catalog.NormalizeRel(rel)
+	if err != nil || rel == "" {
+		return catalog.Event{}, false
+	}
+	if !asset.Allowed(rel, w.cat.Ignored) {
+		return catalog.Event{}, false
+	}
+	kind := catalog.EventAssetChanged
+	if removed {
+		kind = catalog.EventAssetRemoved
+	}
+	return catalog.Event{Kind: kind, Path: rel}, true
 }
 
 func (w *Watcher) addTree(root string, ingestFiles bool) error {
@@ -136,18 +165,12 @@ func (w *Watcher) addTree(root string, ingestFiles bool) error {
 				return fs.SkipDir
 			}
 			if ingestFiles {
-				events := w.cat.ApplyFSChange(path, false)
-				if len(events) > 0 && w.onEvents != nil {
-					w.onEvents(events)
-				}
+				w.publish(path, false)
 			}
 			return nil
 		}
 		if ingestFiles && entry.Type().IsRegular() {
-			events := w.cat.ApplyFSChange(path, false)
-			if len(events) > 0 && w.onEvents != nil {
-				w.onEvents(events)
-			}
+			w.publish(path, false)
 		}
 		return nil
 	})
