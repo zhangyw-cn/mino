@@ -4,3 +4,5 @@ bin/
 **/.mino/
 *.exe
 .worktrees/
+web/node_modules/
+internal/ui/dist/assets/
