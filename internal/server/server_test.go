@@ -745,6 +745,7 @@ func TestIndexHTMLHasIframeAndAppJS(t *testing.T) {
 		`/fuzzy.js`,
 		`/open-path.js`,
 		`/preview-session.js`,
+		"/asset-refs.js",
 		`class="search-wrap"`,
 	} {
 		if !strings.Contains(html, marker) {
@@ -762,6 +763,10 @@ func TestIndexHTMLHasIframeAndAppJS(t *testing.T) {
 	sessionSrc := strings.Index(html, `src="/preview-session.js"`)
 	if sessionSrc < 0 || sessionSrc > appSrc {
 		t.Fatal("index must load /preview-session.js before /app.js")
+	}
+	refsSrc := strings.Index(html, `src="/asset-refs.js"`)
+	if refsSrc < 0 || refsSrc > appSrc {
+		t.Fatal("index must load /asset-refs.js before /app.js")
 	}
 	if strings.Contains(html, `id="quick-open-footer"`) {
 		t.Fatal("index must not include #quick-open-footer")
@@ -901,6 +906,32 @@ func TestPreviewSessionJSServed(t *testing.T) {
 	}
 }
 
+func TestAssetRefsJSServed(t *testing.T) {
+	_, ts, _ := newTestServer(t)
+	defer ts.Close()
+
+	res, err := http.Get(ts.URL + "/asset-refs.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, _ := io.ReadAll(res.Body)
+	res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("status %d", res.StatusCode)
+	}
+	js := string(body)
+	for _, marker := range []string{
+		"MinoAssetRefs",
+		"extractURLs",
+		"resolveRef",
+		"referencedPaths",
+	} {
+		if !strings.Contains(js, marker) {
+			t.Fatalf("asset-refs.js missing %q", marker)
+		}
+	}
+}
+
 func TestAppJSWorkbenchContracts(t *testing.T) {
 	_, ts, _ := newTestServer(t)
 	defer ts.Close()
@@ -990,10 +1021,27 @@ func TestAppJSWorkbenchContracts(t *testing.T) {
 		"contentWindow.location",
 		"decodeURIComponent",
 		"force && path === fromPath && displayedPath === path",
+		"MinoAssetRefs",
+		"referencedPaths",
+		"refreshAssetRefs",
+		"referencedAssets",
+		`["asset-changed", "asset-removed"]`,
+		"referencedAssets.has(event.path)",
 	} {
 		if !strings.Contains(js, marker) {
 			t.Fatalf("app.js missing contract %q", marker)
 		}
+	}
+	assetLoop := strings.Index(js, `["asset-changed", "asset-removed"]`)
+	if assetLoop < 0 {
+		t.Fatal("app.js must listen for asset SSE kinds")
+	}
+	assetSlice := js[assetLoop:]
+	if end := strings.Index(assetSlice, "fillIcons();"); end >= 0 {
+		assetSlice = assetSlice[:end]
+	}
+	if strings.Contains(assetSlice, "loadTree()") {
+		t.Fatal("asset SSE must not call loadTree()")
 	}
 	if !strings.Contains(js, `parsed.type === "preview-ready"`) &&
 		!strings.Contains(js, `parsed.type === 'preview-ready'`) {

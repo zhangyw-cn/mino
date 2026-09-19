@@ -97,6 +97,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /fuzzy.js", embeddedAssetHandler("fuzzy.js", "text/javascript; charset=utf-8"))
 	mux.HandleFunc("GET /open-path.js", embeddedAssetHandler("open-path.js", "text/javascript; charset=utf-8"))
 	mux.HandleFunc("GET /preview-session.js", embeddedAssetHandler("preview-session.js", "text/javascript; charset=utf-8"))
+	mux.HandleFunc("GET /asset-refs.js", embeddedAssetHandler("asset-refs.js", "text/javascript; charset=utf-8"))
 	mux.HandleFunc("GET /style.css", embeddedAssetHandler("style.css", "text/css; charset=utf-8"))
 	mux.HandleFunc("GET /{$}", s.indexHandler)
 	return s.checkHost(mux)

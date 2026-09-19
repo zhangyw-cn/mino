@@ -29,6 +29,10 @@
   if (!previewSession) {
     console.error("MinoPreviewSession is missing; preview updates always navigate");
   }
+  const assetRefs = globalThis.MinoAssetRefs;
+  if (!assetRefs) {
+    console.error("MinoAssetRefs is missing; companion reload is disabled");
+  }
   const mdWidthWrap = document.querySelector("#md-width-wrap");
   const mdWidthButton = document.querySelector("#md-width-button");
   const mdWidthMenu = document.querySelector("#md-width-menu");
@@ -46,6 +50,8 @@
   let pickerOpen = false;
   let activeIndex = -1;
   let pickerRows = [];
+  let referencedAssets = new Set();
+  let assetScanGen = 0;
 
   function previewURL(path) {
     const encoded = path.split("/").map(encodeURIComponent).join("/");
@@ -142,6 +148,32 @@
     });
   }
 
+  function catalogSourceURL(path) {
+    const encoded = path.split("/").map(encodeURIComponent).join("/");
+    if (mdWidth && mdWidth.isMarkdownPath(path)) {
+      return `/api/raw/${encoded}`;
+    }
+    return `/apps/${encoded}`;
+  }
+
+  function refreshAssetRefs(path) {
+    const gen = ++assetScanGen;
+    if (!assetRefs || !path) {
+      referencedAssets = new Set();
+      return;
+    }
+    fetch(catalogSourceURL(path), { cache: "no-store" })
+      .then((res) => (res.ok ? res.text() : Promise.reject()))
+      .then((source) => {
+        if (gen !== assetScanGen) return;
+        referencedAssets = new Set(assetRefs.referencedPaths(path, source));
+      })
+      .catch(() => {
+        if (gen !== assetScanGen) return;
+        referencedAssets = new Set();
+      });
+  }
+
   function openFile(path, force) {
     const fromPath = currentPath;
     const action = decideOpenAction(fromPath, path, force);
@@ -154,6 +186,7 @@
     syncMdWidthControl();
     persistOpenPath(path);
     if (action === "skip") return;
+    refreshAssetRefs(path);
     if (action === "in-place" && previewSession) {
       const message =
         force && path === fromPath && displayedPath === path
@@ -176,6 +209,8 @@
 
   function clearPreview() {
     currentPath = "";
+    assetScanGen += 1;
+    referencedAssets = new Set();
     displayedPath = "";
     setPreviewPending(false);
     preview.removeAttribute("src");
@@ -778,6 +813,20 @@
       if (event.path !== currentPath) return;
       if (kind === "changed") openFile(currentPath, true);
       if (kind === "removed") clearPreview();
+    });
+  }
+  for (const kind of ["asset-changed", "asset-removed"]) {
+    events.addEventListener(kind, (message) => {
+      let event;
+      try {
+        event = JSON.parse(message.data);
+      } catch (error) {
+        console.error("Invalid asset event", error);
+        return;
+      }
+      if (!currentPath) return;
+      if (!referencedAssets.has(event.path)) return;
+      openFile(currentPath, true);
     });
   }
 
