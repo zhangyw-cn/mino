@@ -8,6 +8,12 @@ The UI is a VS Code–like shell: Explorer tree, Command Center, iframe preview,
 
 Requires Go 1.24.4 or later.
 
+The browser UI is built with Vite under `web/`. Before `go test` or `go build`, compile the embedded assets:
+
+```sh
+cd web && npm ci && npm run build
+```
+
 ```sh
 go install github.com/zhangyw-cn/mino/cmd/mino@latest
 ```

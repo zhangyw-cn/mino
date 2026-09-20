@@ -2,9 +2,7 @@ package ui
 
 import "embed"
 
-// FS contains the browser interface served by the HTTP server.
+// FS contains the built browser interface (Vite output under dist/).
 //
-//go:embed index.html app.js style.css fuzzy.js open-path.js preview-session.js asset-refs.js
-//go:embed md/viewer.html md/viewer.js md/viewer.css md/preprocess.js md/toc.js md/mermaid-block.js md/preview-width.js
-//go:embed md/vendor
+//go:embed all:dist viewer_template.html
 var FS embed.FS

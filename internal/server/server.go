@@ -40,7 +40,7 @@ func New(root string, cfgName string, host string, cat *catalog.Catalog, hub *Hu
 		cfgName:  cfgName,
 		cat:      cat,
 		hub:      hub,
-		mdViewer: template.Must(template.ParseFS(ui.FS, "md/viewer.html")),
+		mdViewer: template.Must(template.ParseFS(ui.FS, "viewer_template.html")),
 	}
 	s.SetConfiguredHost(host)
 	return s
@@ -92,13 +92,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/meta", s.metaHandler)
 	mux.HandleFunc("GET /api/raw/", s.rawHandler)
 	mux.HandleFunc("GET /apps/", s.appsHandler)
-	mux.HandleFunc("GET /md/", s.mdAssetHandler)
-	mux.HandleFunc("GET /app.js", embeddedAssetHandler("app.js", "text/javascript; charset=utf-8"))
-	mux.HandleFunc("GET /fuzzy.js", embeddedAssetHandler("fuzzy.js", "text/javascript; charset=utf-8"))
-	mux.HandleFunc("GET /open-path.js", embeddedAssetHandler("open-path.js", "text/javascript; charset=utf-8"))
-	mux.HandleFunc("GET /preview-session.js", embeddedAssetHandler("preview-session.js", "text/javascript; charset=utf-8"))
-	mux.HandleFunc("GET /asset-refs.js", embeddedAssetHandler("asset-refs.js", "text/javascript; charset=utf-8"))
-	mux.HandleFunc("GET /style.css", embeddedAssetHandler("style.css", "text/css; charset=utf-8"))
+	mux.HandleFunc("GET /assets/", s.distAssetHandler)
 	mux.HandleFunc("GET /{$}", s.indexHandler)
 	return s.checkHost(mux)
 }
@@ -254,36 +248,26 @@ func (s *Server) rawHandler(w http.ResponseWriter, r *http.Request) {
 	_, _ = io.Copy(w, file)
 }
 
-func (s *Server) mdAssetHandler(w http.ResponseWriter, r *http.Request) {
-	name := strings.TrimPrefix(r.URL.Path, "/md/")
-	if name == "" {
-		http.NotFound(w, r)
-		return
-	}
+func (s *Server) distAssetHandler(w http.ResponseWriter, r *http.Request) {
+	name := strings.TrimPrefix(r.URL.Path, "/")
 	cleaned := path.Clean("/" + name)
 	cleaned = strings.TrimPrefix(cleaned, "/")
-	if cleaned == "" || cleaned == "." {
+	if cleaned == "" || strings.Contains(cleaned, "..") {
 		http.NotFound(w, r)
 		return
 	}
-	if strings.Contains(cleaned, "_test.") || strings.HasSuffix(cleaned, "VENDOR.md") {
-		http.NotFound(w, r)
-		return
-	}
-	data, err := ui.FS.ReadFile("md/" + cleaned)
+	data, err := ui.FS.ReadFile("dist/" + cleaned)
 	if err != nil {
 		http.NotFound(w, r)
 		return
 	}
-	w.Header().Set("Content-Type", mdAssetContentType(cleaned))
+	w.Header().Set("Content-Type", distContentType(cleaned))
+	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
-	if strings.HasPrefix(cleaned, "vendor/") {
-		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
-	}
 	_, _ = w.Write(data)
 }
 
-func mdAssetContentType(name string) string {
+func distContentType(name string) string {
 	switch strings.ToLower(path.Ext(name)) {
 	case ".js":
 		return "text/javascript; charset=utf-8"
@@ -305,25 +289,14 @@ func mdAssetContentType(name string) string {
 }
 
 func (s *Server) indexHandler(w http.ResponseWriter, r *http.Request) {
-	data, err := ui.FS.ReadFile("index.html")
+	data, err := ui.FS.ReadFile("dist/index.html")
 	if err != nil {
 		http.Error(w, "embedded UI unavailable", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
 	_, _ = w.Write(data)
-}
-
-func embeddedAssetHandler(name, contentType string) http.HandlerFunc {
-	return func(w http.ResponseWriter, _ *http.Request) {
-		data, err := ui.FS.ReadFile(name)
-		if err != nil {
-			http.Error(w, "embedded UI unavailable", http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", contentType)
-		_, _ = w.Write(data)
-	}
 }
 
 type treeNode struct {

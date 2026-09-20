@@ -8,6 +8,7 @@ export default defineConfig({
   base: "/",
   root: path.resolve(__dirname),
   build: {
+    manifest: true,
     outDir: path.resolve(__dirname, "../internal/ui/dist"),
     emptyOutDir: true,
     rollupOptions: {
