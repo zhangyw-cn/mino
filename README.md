@@ -68,6 +68,17 @@ ignore = ["archive/**"]
 
 The status bar is visible at the bottom. For `.md` files it exposes 标宽 / 较宽 / 全宽 (960px / 1400px / fill); the default is 较宽. The choice is stored in this origin’s `localStorage` under `mino-md-preview-width` and applies to all Markdown files.
 
+### Manual smoke (after UI changes)
+
+With `cd web && npm run build` then `go run ./cmd/mino ./example --port 52341`:
+
+1. Open `hello.html` from Explorer; iframe shows content.
+2. Ctrl/Cmd+P (with focus in the workbench **and** after focusing inside the preview iframe) opens Quick Open; type `timer`, Enter opens `tools/timer.html`.
+3. Open `docs/sample.md`; outline appears on a wide viewport; status bar width cycles update the preview.
+4. Refresh the browser tab; the last preview path restores via `mino-open-path`.
+5. With `tools/styled.html` open, edit `tools/styled.css` on disk; the preview reloads.
+6. Stop the watcher (or force `watchEnabled=false` via a failing `/api/meta` in tests); banner “Live reload unavailable…” appears.
+
 ## Markdown preview
 
 Markdown is rendered through a sanitized viewer (not a raw executable document): source is fetched as `text/plain`, parsed as GFM, and passed through DOMPurify before highlight / KaTeX / Mermaid.

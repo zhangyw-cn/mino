@@ -63,18 +63,26 @@ function HighlightedText({
 
 export type QuickOpenProps = {
   open: boolean;
+  /** Bump while open to re-focus and select the input (parity with legacy Command Center / hotkey). */
+  focusToken?: number;
   fileIndex: string[];
   recents: string[];
   onClose: () => void;
   onOpen: (path: string) => void;
 };
 
-export function QuickOpen({ open, fileIndex, recents, onClose, onOpen }: QuickOpenProps) {
+export function QuickOpen({
+  open,
+  focusToken = 0,
+  fileIndex,
+  recents,
+  onClose,
+  onOpen,
+}: QuickOpenProps) {
   const listId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
-  const previousPathRef = useRef<string | undefined>(undefined);
 
   const rows: PickerRow[] = useMemo(() => {
     const trimmed = query.trim();
@@ -96,12 +104,11 @@ export function QuickOpen({ open, fileIndex, recents, onClose, onOpen }: QuickOp
     if (!open) {
       setQuery("");
       setActiveIndex(0);
-      previousPathRef.current = undefined;
       return;
     }
     inputRef.current?.focus();
     inputRef.current?.select();
-  }, [open]);
+  }, [open, focusToken]);
 
   const acceptPath = useCallback(
     (path: string) => {
@@ -176,8 +183,6 @@ export function QuickOpen({ open, fileIndex, recents, onClose, onOpen }: QuickOp
             className="min-w-0 flex-1 bg-transparent text-[13px] text-[#cccccc] outline-none placeholder:text-[#6e6e6e]"
             value={query}
             onChange={(event) => {
-              previousPathRef.current =
-                activeIndex >= 0 && rows[activeIndex] ? rows[activeIndex].path : undefined;
               setQuery(event.target.value);
               setActiveIndex(0);
             }}

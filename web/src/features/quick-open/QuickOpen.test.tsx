@@ -89,4 +89,33 @@ describe("QuickOpen", () => {
     await user.click(within(view.container).getByRole("option", { name: /sample\.md/i }));
     expect(onOpen).toHaveBeenCalledWith("docs/sample.md");
   });
+
+  it("focusToken re-focuses the input while already open", () => {
+    const view = render(
+      <QuickOpen
+        open
+        focusToken={0}
+        fileIndex={fileIndex}
+        recents={[]}
+        onClose={() => {}}
+        onOpen={() => {}}
+      />,
+    );
+    const input = within(view.container).getByPlaceholderText(
+      "Search files by name",
+    ) as HTMLInputElement;
+    input.blur();
+    expect(document.activeElement).not.toBe(input);
+    view.rerender(
+      <QuickOpen
+        open
+        focusToken={1}
+        fileIndex={fileIndex}
+        recents={[]}
+        onClose={() => {}}
+        onOpen={() => {}}
+      />,
+    );
+    expect(document.activeElement).toBe(input);
+  });
 });

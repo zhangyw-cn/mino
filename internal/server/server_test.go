@@ -14,6 +14,7 @@ import (
 	"github.com/zhangyw-cn/mino/internal/catalog"
 	"github.com/zhangyw-cn/mino/internal/ignore"
 	"github.com/zhangyw-cn/mino/internal/server"
+	"github.com/zhangyw-cn/mino/internal/ui"
 )
 
 func newTestServer(t *testing.T) (*server.Server, *httptest.Server, string) {
@@ -596,6 +597,50 @@ func TestDistAssetsServed(t *testing.T) {
 	if ct := res.Header.Get("Content-Type"); !strings.Contains(ct, "javascript") {
 		t.Fatalf("Content-Type %q", ct)
 	}
+}
+
+func TestEmbeddedHTMLAssetRefsExist(t *testing.T) {
+	check := func(name, html string) {
+		t.Helper()
+		for _, attr := range []string{`src="/assets/`, `href="/assets/`} {
+			rest := html
+			for {
+				i := strings.Index(rest, attr)
+				if i < 0 {
+					break
+				}
+				start := i + len(`src="`)
+				if strings.HasPrefix(attr, "href") {
+					start = i + len(`href="`)
+				}
+				end := strings.Index(rest[start:], `"`)
+				if end < 0 {
+					t.Fatalf("%s: malformed %s", name, attr)
+				}
+				rel := rest[start : start+end]
+				if !strings.HasPrefix(rel, "/assets/") {
+					t.Fatalf("%s: unexpected asset path %q", name, rel)
+				}
+				embedPath := "dist" + rel
+				if _, err := ui.FS.ReadFile(embedPath); err != nil {
+					t.Fatalf("%s references missing embed file %s: %v", name, embedPath, err)
+				}
+				rest = rest[start+end+1:]
+			}
+		}
+	}
+
+	index, err := ui.FS.ReadFile("dist/index.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	check("dist/index.html", string(index))
+
+	viewer, err := ui.FS.ReadFile("viewer_template.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	check("viewer_template.html", string(viewer))
 }
 
 func TestLegacyStaticRoutesRemoved(t *testing.T) {

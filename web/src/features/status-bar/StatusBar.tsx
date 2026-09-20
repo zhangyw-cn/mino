@@ -110,6 +110,6 @@ export function StatusBar({
   );
 }
 
-export function useInitialPreviewWidth(): PreviewWidth {
+export function readInitialPreviewWidth(): PreviewWidth {
   return readPreviewWidth(localStorage);
 }

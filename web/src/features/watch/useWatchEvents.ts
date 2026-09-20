@@ -5,12 +5,6 @@ export type AssetEventKind = "asset-changed" | "asset-removed";
 
 export type WatchEventPayload = { path: string };
 
-export type UseWatchEventsOptions = {
-  enabled: boolean;
-  onFileEvent: (kind: FileEventKind, payload: WatchEventPayload) => void;
-  onAssetEvent: (kind: AssetEventKind, payload: WatchEventPayload) => void;
-};
-
 function parseEventData(data: string): WatchEventPayload | null {
   try {
     const event = JSON.parse(data) as { path?: unknown };
@@ -23,17 +17,18 @@ function parseEventData(data: string): WatchEventPayload | null {
 }
 
 export function useWatchEvents({
-  enabled,
   onFileEvent,
   onAssetEvent,
-}: UseWatchEventsOptions): void {
+}: {
+  onFileEvent: (kind: FileEventKind, payload: WatchEventPayload) => void;
+  onAssetEvent: (kind: AssetEventKind, payload: WatchEventPayload) => void;
+}): void {
   const onFileEventRef = useRef(onFileEvent);
   const onAssetEventRef = useRef(onAssetEvent);
   onFileEventRef.current = onFileEvent;
   onAssetEventRef.current = onAssetEvent;
 
   useEffect(() => {
-    if (!enabled) return;
     const events = new EventSource("/api/events");
     const fileKinds: FileEventKind[] = ["added", "removed", "changed"];
     const assetKinds: AssetEventKind[] = ["asset-changed", "asset-removed"];
@@ -54,5 +49,5 @@ export function useWatchEvents({
     return () => {
       events.close();
     };
-  }, [enabled]);
+  }, []);
 }

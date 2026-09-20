@@ -239,8 +239,11 @@ export const PreviewPane = forwardRef<PreviewPaneHandle, PreviewPaneProps>(
 
     const onQuickOpenHotkeyRef = useRef(onQuickOpenHotkey);
     onQuickOpenHotkeyRef.current = onQuickOpenHotkey;
+    const previewKeyCleanupRef = useRef<(() => void) | null>(null);
 
     const bindPreviewHotkeys = useCallback(() => {
+      previewKeyCleanupRef.current?.();
+      previewKeyCleanupRef.current = null;
       if (!onQuickOpenHotkeyRef.current) return;
       try {
         const doc = iframeRef.current?.contentDocument;
@@ -251,9 +254,19 @@ export const PreviewPane = forwardRef<PreviewPaneHandle, PreviewPaneProps>(
           onQuickOpenHotkeyRef.current?.();
         };
         doc.addEventListener("keydown", onKeyDown, true);
+        previewKeyCleanupRef.current = () => {
+          doc.removeEventListener("keydown", onKeyDown, true);
+        };
       } catch {
         /* cross-origin or unavailable document */
       }
+    }, []);
+
+    useEffect(() => {
+      return () => {
+        previewKeyCleanupRef.current?.();
+        previewKeyCleanupRef.current = null;
+      };
     }, []);
 
     const onIframeLoad = useCallback(() => {

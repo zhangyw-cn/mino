@@ -9,7 +9,7 @@ import {
 import { QuickOpen, isQuickOpenHotkey } from "../features/quick-open/QuickOpen";
 import {
   StatusBar,
-  useInitialPreviewWidth,
+  readInitialPreviewWidth,
 } from "../features/status-bar/StatusBar";
 import { useWatchEvents } from "../features/watch/useWatchEvents";
 import {
@@ -49,6 +49,7 @@ export function WorkbenchApp({ onOpenPath }: WorkbenchAppProps = {}) {
   const openPathRestoreRef = useRef(createOpenPathRestore());
   const openNonceRef = useRef(0);
   const listingRequestId = useRef(0);
+  const listingAbortRef = useRef<AbortController | null>(null);
 
   const [workspaceName, setWorkspaceName] = useState("mino");
   const [watchEnabled, setWatchEnabled] = useState(true);
@@ -60,8 +61,9 @@ export function WorkbenchApp({ onOpenPath }: WorkbenchAppProps = {}) {
   const [selectedPath, setSelectedPath] = useState("");
   const [recents, setRecents] = useState<string[]>([]);
   const [quickOpenOpen, setQuickOpenOpen] = useState(false);
+  const [quickOpenFocusToken, setQuickOpenFocusToken] = useState(0);
   const [previewWidth, setPreviewWidth] = useState<PreviewWidth>(() =>
-    useInitialPreviewWidth(),
+    readInitialPreviewWidth(),
   );
   const [openSignal, setOpenSignal] = useState<PreviewOpenSignal>(() => ({
     path: "",
@@ -81,8 +83,10 @@ export function WorkbenchApp({ onOpenPath }: WorkbenchAppProps = {}) {
   }, []);
 
   const loadTree = useCallback(async () => {
-    const requestId = ++listingRequestId.current;
+    listingAbortRef.current?.abort();
     const controller = new AbortController();
+    listingAbortRef.current = controller;
+    const requestId = ++listingRequestId.current;
     try {
       const root = await fetchTree(controller.signal);
       if (requestId !== listingRequestId.current) return;
@@ -111,11 +115,13 @@ export function WorkbenchApp({ onOpenPath }: WorkbenchAppProps = {}) {
       console.error("Failed to load tree", error);
       setTreeStatus("Could not load files.");
     }
-    return () => controller.abort();
   }, [bumpPreviewOpen, onOpenPath]);
 
   useEffect(() => {
     void loadTree();
+    return () => {
+      listingAbortRef.current?.abort();
+    };
   }, [loadTree]);
 
   useEffect(() => {
@@ -129,12 +135,14 @@ export function WorkbenchApp({ onOpenPath }: WorkbenchAppProps = {}) {
       })
       .catch((error) => {
         console.error("Failed to load metadata", error);
+        setWatchEnabled(false);
       });
     return () => controller.abort();
   }, []);
 
   const openQuickOpen = useCallback(() => {
     setQuickOpenOpen(true);
+    setQuickOpenFocusToken((token) => token + 1);
   }, []);
 
   const closeQuickOpen = useCallback(() => {
@@ -208,7 +216,6 @@ export function WorkbenchApp({ onOpenPath }: WorkbenchAppProps = {}) {
   );
 
   useWatchEvents({
-    enabled: watchEnabled,
     onFileEvent,
     onAssetEvent,
   });
@@ -268,6 +275,7 @@ export function WorkbenchApp({ onOpenPath }: WorkbenchAppProps = {}) {
           </button>
           <QuickOpen
             open={quickOpenOpen}
+            focusToken={quickOpenFocusToken}
             fileIndex={fileIndex}
             recents={recents}
             onClose={closeQuickOpen}
