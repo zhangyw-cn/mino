@@ -123,8 +123,10 @@ export function MarkdownViewer({ initialPath }: { initialPath: string }) {
     const gen = paintGenRef.current;
     const content = contentRef.current;
     const finish = () => {
-      paintDoneRef.current?.();
+      if (gen !== requestGen.current) return;
+      const done = paintDoneRef.current;
       paintDoneRef.current = null;
+      done?.();
     };
 
     if (!content || !html) {

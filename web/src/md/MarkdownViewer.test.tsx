@@ -7,6 +7,18 @@ import {
 import { previewWidthMessage } from "../lib/preview-width";
 import { MarkdownViewer } from "./MarkdownViewer";
 
+const mermaidFinishByGen = new Map<number, () => void>();
+let holdMermaidPaint = false;
+
+vi.mock("./MermaidBlock", () => ({
+  replaceMermaidBlocksIn: vi.fn((_container: HTMLElement, gen: number) => {
+    if (!holdMermaidPaint) return Promise.resolve();
+    return new Promise<void>((resolve) => {
+      mermaidFinishByGen.set(gen, resolve);
+    });
+  }),
+}));
+
 beforeEach(() => {
   vi.stubGlobal("scrollTo", vi.fn());
   vi.stubGlobal("matchMedia", (query: string) => ({
@@ -21,6 +33,8 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  holdMermaidPaint = false;
+  mermaidFinishByGen.clear();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -84,5 +98,57 @@ describe("MarkdownViewer", () => {
       .filter((c) => (c[0] as { type?: string }).type === "preview-ready")
       .map((c) => (c[0] as { path: string }).path);
     expect(readyPaths).not.toContain("docs/slow.md");
+  });
+
+  it("ignores stale mermaid paint completion for a newer navigate", async () => {
+    holdMermaidPaint = true;
+    const postMessage = vi.fn();
+    vi.stubGlobal("parent", { postMessage });
+
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("slow.md")) {
+        return Promise.resolve(
+          new Response("```mermaid\ngraph TD\n  Slow-->A\n```", {
+            status: 200,
+            headers: { "Content-Type": "text/plain" },
+          }),
+        );
+      }
+      if (url.includes("fast.md")) {
+        return Promise.resolve(
+          new Response("# Fast\n\n```mermaid\ngraph TD\n  Fast-->B\n```", {
+            status: 200,
+            headers: { "Content-Type": "text/plain" },
+          }),
+        );
+      }
+      return Promise.resolve(new Response("", { status: 404 }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<MarkdownViewer initialPath="docs/slow.md" />);
+
+    await waitFor(() => expect(mermaidFinishByGen.has(1)).toBe(true));
+
+    dispatchParentMessage(previewNavigateMessage("docs/fast.md"));
+    await waitFor(() => expect(mermaidFinishByGen.has(2)).toBe(true));
+
+    mermaidFinishByGen.get(1)!();
+
+    await new Promise((r) => setTimeout(r, 20));
+    const readyBeforeCurrent = postMessage.mock.calls
+      .filter((c) => (c[0] as { type?: string }).type === "preview-ready")
+      .map((c) => (c[0] as { path: string }).path);
+    expect(readyBeforeCurrent).not.toContain("docs/fast.md");
+
+    mermaidFinishByGen.get(2)!();
+
+    await waitFor(() => {
+      expect(postMessage).toHaveBeenCalledWith(
+        previewReadyMessage("docs/fast.md"),
+        window.location.origin,
+      );
+    });
   });
 });
