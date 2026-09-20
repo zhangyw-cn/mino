@@ -1,7 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "../styles/index.css";
-import "../../../internal/ui/md/viewer.css";
+import "./viewer.css";
 import "highlight.js/styles/github-dark.min.css";
 import "katex/dist/katex.min.css";
 import { MarkdownViewer } from "./MarkdownViewer";
