@@ -1,1 +1,6 @@
 @import "tailwindcss";
+
+iframe.preview-pending {
+  visibility: hidden;
+  opacity: 0;
+}

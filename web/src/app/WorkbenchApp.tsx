@@ -1,7 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon, fileIconName } from "../components/Icon";
 import { ExplorerTree } from "../features/explorer/ExplorerTree";
+import {
+  PreviewPane,
+  type PreviewOpenSignal,
+  type PreviewPaneHandle,
+} from "../features/preview/PreviewPane";
 import { QuickOpen, isQuickOpenHotkey } from "../features/quick-open/QuickOpen";
+import {
+  StatusBar,
+  useInitialPreviewWidth,
+} from "../features/status-bar/StatusBar";
+import { useWatchEvents } from "../features/watch/useWatchEvents";
 import {
   ancestorPaths,
   fetchMeta,
@@ -9,9 +19,23 @@ import {
   flattenFiles,
   type TreeNode,
 } from "../lib/api";
+import {
+  clearOpenPath,
+  createOpenPathRestore,
+  writeOpenPath,
+} from "../lib/open-path";
+import type { PreviewWidth } from "../lib/preview-width";
 
 function rememberRecent(recents: string[], path: string) {
   return [path, ...recents.filter((item) => item !== path)].slice(0, 10);
+}
+
+function sessionStore(): Storage | null {
+  try {
+    return sessionStorage;
+  } catch {
+    return null;
+  }
 }
 
 export type WorkbenchAppProps = {
@@ -20,6 +44,12 @@ export type WorkbenchAppProps = {
 
 export function WorkbenchApp({ onOpenPath }: WorkbenchAppProps = {}) {
   const commandCenterRef = useRef<HTMLButtonElement>(null);
+  const previewRef = useRef<PreviewPaneHandle>(null);
+  const previewIframeRef = useRef<HTMLIFrameElement | null>(null);
+  const openPathRestoreRef = useRef(createOpenPathRestore());
+  const openNonceRef = useRef(0);
+  const listingRequestId = useRef(0);
+
   const [workspaceName, setWorkspaceName] = useState("mino");
   const [watchEnabled, setWatchEnabled] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -30,7 +60,25 @@ export function WorkbenchApp({ onOpenPath }: WorkbenchAppProps = {}) {
   const [selectedPath, setSelectedPath] = useState("");
   const [recents, setRecents] = useState<string[]>([]);
   const [quickOpenOpen, setQuickOpenOpen] = useState(false);
-  const listingRequestId = useRef(0);
+  const [previewWidth, setPreviewWidth] = useState<PreviewWidth>(() =>
+    useInitialPreviewWidth(),
+  );
+  const [openSignal, setOpenSignal] = useState<PreviewOpenSignal>(() => ({
+    path: "",
+    force: false,
+    nonce: 0,
+  }));
+  const selectedPathRef = useRef(selectedPath);
+  selectedPathRef.current = selectedPath;
+
+  const bumpPreviewOpen = useCallback((path: string, force = false) => {
+    openNonceRef.current += 1;
+    setOpenSignal({
+      path,
+      force,
+      nonce: openNonceRef.current,
+    });
+  }, []);
 
   const loadTree = useCallback(async () => {
     const requestId = ++listingRequestId.current;
@@ -43,6 +91,20 @@ export function WorkbenchApp({ onOpenPath }: WorkbenchAppProps = {}) {
       setFileIndex(index);
       setRecents((prev) => prev.filter((path) => index.includes(path)));
       setTreeStatus(null);
+
+      const restored = openPathRestoreRef.current(sessionStore(), index);
+      if (restored) {
+        setRecents((prev) => rememberRecent(prev, restored));
+        setSelectedPath(restored);
+        setExpandedPaths((prev) => {
+          const next = new Set(prev);
+          for (const ancestor of ancestorPaths(restored)) next.add(ancestor);
+          return next;
+        });
+        writeOpenPath(sessionStore(), restored);
+        bumpPreviewOpen(restored, false);
+        onOpenPath?.(restored);
+      }
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") return;
       if (requestId !== listingRequestId.current) return;
@@ -50,7 +112,7 @@ export function WorkbenchApp({ onOpenPath }: WorkbenchAppProps = {}) {
       setTreeStatus("Could not load files.");
     }
     return () => controller.abort();
-  }, []);
+  }, [bumpPreviewOpen, onOpenPath]);
 
   useEffect(() => {
     void loadTree();
@@ -91,8 +153,14 @@ export function WorkbenchApp({ onOpenPath }: WorkbenchAppProps = {}) {
     return () => document.removeEventListener("keydown", onKeyDown, true);
   }, [openQuickOpen]);
 
+  const clearPreview = useCallback(() => {
+    setSelectedPath("");
+    clearOpenPath(sessionStore());
+    bumpPreviewOpen("", false);
+  }, [bumpPreviewOpen]);
+
   const handleOpenPath = useCallback(
-    (path: string) => {
+    (path: string, force = false) => {
       if (!fileIndex.includes(path)) {
         setRecents((prev) => prev.filter((item) => item !== path));
         return;
@@ -104,10 +172,46 @@ export function WorkbenchApp({ onOpenPath }: WorkbenchAppProps = {}) {
         for (const ancestor of ancestorPaths(path)) next.add(ancestor);
         return next;
       });
+      writeOpenPath(sessionStore(), path);
+      bumpPreviewOpen(path, force);
       onOpenPath?.(path);
     },
-    [fileIndex, onOpenPath],
+    [bumpPreviewOpen, fileIndex, onOpenPath],
   );
+
+  const handleOpenPathRef = useRef(handleOpenPath);
+  handleOpenPathRef.current = handleOpenPath;
+  const clearPreviewRef = useRef(clearPreview);
+  clearPreviewRef.current = clearPreview;
+  const loadTreeRef = useRef(loadTree);
+  loadTreeRef.current = loadTree;
+
+  const onFileEvent = useCallback(
+    (kind: "added" | "removed" | "changed", payload: { path: string }) => {
+      if (kind === "removed") {
+        setRecents((prev) => prev.filter((item) => item !== payload.path));
+      }
+      void loadTreeRef.current();
+      const current = selectedPathRef.current;
+      if (payload.path !== current) return;
+      if (kind === "changed") handleOpenPathRef.current(current, true);
+      if (kind === "removed") clearPreviewRef.current();
+    },
+    [],
+  );
+
+  const onAssetEvent = useCallback(
+    (_kind: "asset-changed" | "asset-removed", payload: { path: string }) => {
+      previewRef.current?.noteAssetEvent(payload.path);
+    },
+    [],
+  );
+
+  useWatchEvents({
+    enabled: watchEnabled,
+    onFileEvent,
+    onAssetEvent,
+  });
 
   const toggleExpand = useCallback((path: string, expanded: boolean) => {
     setExpandedPaths((prev) => {
@@ -125,6 +229,11 @@ export function WorkbenchApp({ onOpenPath }: WorkbenchAppProps = {}) {
   const collapseSidebar = useCallback(() => {
     setSidebarCollapsed(true);
   }, []);
+
+  const getPreviewWindow = useCallback(
+    () => previewIframeRef.current?.contentWindow ?? null,
+    [],
+  );
 
   const gridCols = sidebarCollapsed
     ? "grid-cols-[48px_0px_1fr]"
@@ -237,17 +346,25 @@ export function WorkbenchApp({ onOpenPath }: WorkbenchAppProps = {}) {
               <span className="text-[#6e6e6e]">No file selected</span>
             )}
           </div>
-          <div className="flex flex-1 flex-col items-center justify-center gap-2 p-8 text-center text-[#6e6e6e]">
-            <Icon name="empty" size={34} />
-            <strong className="text-[#cccccc]">No preview selected</strong>
-            <span className="max-w-sm text-[13px]">
-              Choose an HTML or Markdown file from the sidebar.
-            </span>
+          <div className="flex min-h-0 flex-1 flex-col bg-[#1e1e1e]">
+            <PreviewPane
+              ref={previewRef}
+              openSignal={openSignal}
+              previewWidth={previewWidth}
+              onIframeRef={(node) => {
+                previewIframeRef.current = node;
+              }}
+            />
           </div>
         </section>
       </main>
 
-      <footer className="flex h-[22px] shrink-0 items-center border-t border-[#2b2b2b] bg-[#007acc] px-2 text-[12px] text-white" />
+      <StatusBar
+        currentPath={selectedPath}
+        previewWidth={previewWidth}
+        onPreviewWidthChange={setPreviewWidth}
+        getPreviewWindow={getPreviewWindow}
+      />
     </div>
   );
 }
