@@ -21,6 +21,9 @@ function memoryStorage(initial?: Record<string, string>) {
     setItem(key: string, value: string) {
       store.set(key, String(value));
     },
+    removeItem(key: string) {
+      store.delete(key);
+    },
   };
 }
 
@@ -69,6 +72,8 @@ describe("preview-width", () => {
         getItem() {
           throw new Error("denied");
         },
+        setItem() {},
+        removeItem() {},
       }),
     ).toBe("wide");
   });
@@ -85,9 +90,13 @@ describe("preview-width", () => {
     expect(
       writePreviewWidth(
         {
+          getItem() {
+            return null;
+          },
           setItem() {
             throw new Error("quota");
           },
+          removeItem() {},
         },
         "full",
       ),
