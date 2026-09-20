@@ -351,6 +351,7 @@ export function WorkbenchApp({ onOpenPath }: WorkbenchAppProps = {}) {
               ref={previewRef}
               openSignal={openSignal}
               previewWidth={previewWidth}
+              onQuickOpenHotkey={openQuickOpen}
               onIframeRef={(node) => {
                 previewIframeRef.current = node;
               }}

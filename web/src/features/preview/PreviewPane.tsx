@@ -15,11 +15,8 @@ import {
   previewNavigateMessage,
   previewReloadMessage,
 } from "../../lib/preview-session";
-import {
-  parsePreviewWidthMessage,
-  previewWidthMessage,
-  type PreviewWidth,
-} from "../../lib/preview-width";
+import { previewWidthMessage, type PreviewWidth } from "../../lib/preview-width";
+import { isQuickOpenHotkey } from "../quick-open/QuickOpen";
 import {
   catalogSourceURL,
   loadedPreviewPath,
@@ -40,10 +37,15 @@ export type PreviewPaneProps = {
   openSignal: PreviewOpenSignal;
   previewWidth: PreviewWidth;
   onIframeRef?: (iframe: HTMLIFrameElement | null) => void;
+  /** Open Quick Open when Ctrl/Cmd+E|P is pressed inside the same-origin preview iframe. */
+  onQuickOpenHotkey?: () => void;
 };
 
 export const PreviewPane = forwardRef<PreviewPaneHandle, PreviewPaneProps>(
-  function PreviewPane({ openSignal, previewWidth, onIframeRef }, ref) {
+  function PreviewPane(
+    { openSignal, previewWidth, onIframeRef, onQuickOpenHotkey },
+    ref,
+  ) {
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const currentPathRef = useRef("");
     const displayedPathRef = useRef("");
@@ -225,9 +227,7 @@ export const PreviewPane = forwardRef<PreviewPaneHandle, PreviewPaneProps>(
               setNavigatePending(false);
             }
           }
-          return;
         }
-        parsePreviewWidthMessage(event.data, event.origin, origin);
       }
       window.addEventListener("message", onMessage);
       return () => window.removeEventListener("message", onMessage);
@@ -237,12 +237,37 @@ export const PreviewPane = forwardRef<PreviewPaneHandle, PreviewPaneProps>(
       postMdWidthToPreview();
     }, [postMdWidthToPreview, previewWidth, displayedPath]);
 
+    const onQuickOpenHotkeyRef = useRef(onQuickOpenHotkey);
+    onQuickOpenHotkeyRef.current = onQuickOpenHotkey;
+
+    const bindPreviewHotkeys = useCallback(() => {
+      if (!onQuickOpenHotkeyRef.current) return;
+      try {
+        const doc = iframeRef.current?.contentDocument;
+        if (!doc) return;
+        const onKeyDown = (event: KeyboardEvent) => {
+          if (!isQuickOpenHotkey(event)) return;
+          event.preventDefault();
+          onQuickOpenHotkeyRef.current?.();
+        };
+        doc.addEventListener("keydown", onKeyDown, true);
+      } catch {
+        /* cross-origin or unavailable document */
+      }
+    }, []);
+
     const onIframeLoad = useCallback(() => {
+      bindPreviewHotkeys();
       postMdWidthToPreview();
       const loaded = loadedPreviewPath(iframeRef.current, origin);
       if (inPlace(loaded)) return;
       revealPreviewIfCurrent(loaded);
-    }, [origin, postMdWidthToPreview, revealPreviewIfCurrent]);
+    }, [
+      bindPreviewHotkeys,
+      origin,
+      postMdWidthToPreview,
+      revealPreviewIfCurrent,
+    ]);
 
     const pendingClass = navigatePending ? "preview-pending" : "";
 

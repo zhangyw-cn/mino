@@ -6,19 +6,19 @@ The UI is a VS Code–like shell: Explorer tree, Command Center, iframe preview,
 
 ## Install
 
-Requires Go 1.24.4 or later.
+Requires Go 1.24.4 or later, plus Node.js 20+ when building the UI from source.
 
-The browser UI is built with Vite under `web/`. Before `go test`, `go build`, or `go run` from a clean tree, compile the embedded assets:
+The browser UI lives under `web/` and is embedded into the Go binary. From a clean checkout you **must** build it before `go test`, `go build`, `go run`, or `go install` from this tree:
 
 ```sh
 cd web && npm ci && npm run build
+cd ..
+go install ./cmd/mino
 ```
 
-Output lands in `internal/ui/dist` and is embedded by Go. Frontend development (dev server, Vitest) is documented in [web/README.md](web/README.md).
+`npm run build` writes hashed assets into `internal/ui/dist` (committed so module installs can embed a working UI). Frontend development (dev server, Vitest) is documented in [web/README.md](web/README.md).
 
-```sh
-go install github.com/zhangyw-cn/mino/cmd/mino@latest
-```
+Published module installs (`go install github.com/zhangyw-cn/mino/cmd/mino@latest`) only include a usable UI when the tagged commit contains those built `internal/ui/dist` assets. Prefer installing from a release tag that includes them, or build from a clone as above.
 
 ## Usage
 

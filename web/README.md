@@ -49,9 +49,9 @@ Runs, in order:
 
 1. `tsc -b` — project references typecheck
 2. `vite build` — dual HTML entries (`index.html`, `md/viewer.html`) into `../internal/ui/dist`
-3. `node scripts/write-viewer-template.mjs` — generates `internal/ui/dist/viewer_template.html` for Go `data-path` injection
+3. `node scripts/write-viewer-template.mjs` — generates `internal/ui/viewer_template.html` for Go `data-path` injection
 
-**Contributors and CI:** run `npm ci && npm run build` in `web/` before `go test`, `go build`, or `go run` from a clean clone, because the Go binary embeds `internal/ui/dist`.
+**Contributors and CI:** run `npm ci && npm run build` in `web/` before `go test`, `go build`, or `go run` from a clean clone, because the Go binary embeds `internal/ui/dist` (and the generated viewer template).
 
 ### `npm test`
 
