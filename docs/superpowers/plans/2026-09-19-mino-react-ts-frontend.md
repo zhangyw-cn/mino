@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace the embedded vanilla JS workbench and Markdown viewer with a Vite + React + TypeScript + Tailwind UI, shipped via `go:embed` of `internal/ui/dist`, with behavior parity and Vitest + Playwright coverage.
+**Goal:** Replace the embedded vanilla JS workbench and Markdown viewer with a Vite + React + TypeScript + Tailwind UI, shipped via `go:embed` of `internal/ui/dist`, with behavior parity and Vitest coverage (Playwright E2E out of scope; see Task 11).
 
 **Architecture:** One `web/` package with two Vite HTML entries (`index` workbench, `md/viewer` iframe document). Pure logic ports to `web/src/lib/` first (TDD from existing `testdata/*.mjs`). Vite `outDir` is `internal/ui/dist` (go:embed cannot use `..`). Go serves hashed assets from that FS, keeps a thin `html/template` for MD `data-path` injection, and drops per-file `/app.js` routes. Existing shell↔viewer `postMessage` protocol (`source: "mino"`) is **preserved**, not redesigned.
 
-**Tech Stack:** React 19, TypeScript 5.x, Vite 6.x, Tailwind CSS 4.x, Vitest, Testing Library, Playwright, Go 1.24.4 embed. No UI component libraries.
+**Tech Stack:** React 19, TypeScript 5.x, Vite 6.x, Tailwind CSS 4.x, Vitest, Testing Library, Go 1.24.4 embed. No UI component libraries. (Playwright was planned for Task 11 but is cancelled.)
 
 ## Global Constraints
 
@@ -986,6 +986,8 @@ git commit -m "chore(ui): remove vanilla JS UI after React cutover"
 
 ### Task 11: Playwright E2E parity suite
 
+**CANCELLED (2026-09-21):** user opted out of Playwright E2E; Vitest covers unit/component tests. Behavior parity remains manual / covered by existing Go integration tests where applicable.
+
 **Files:**
 - Create: `web/playwright.config.ts`
 - Create: `web/e2e/workbench.spec.ts`
@@ -1068,7 +1070,7 @@ git commit -m "test(web): add Playwright parity suite for React UI"
 
 **Files:**
 - Modify: `README.md`
-- Create: `web/README.md` (scripts: dev with proxy, build, test, e2e)
+- Create: `web/README.md` (scripts: dev with proxy, build, Vitest)
 
 - [ ] **Step 1: Document required build before `go run` / release**
 
@@ -1102,12 +1104,13 @@ git commit -m "docs: document React UI build workflow"
 | Thin MD template + `data-path` | 6, 9 |
 | Port pure libs with tests | 2–5 |
 | Explorer / Quick Open / preview / watch / status | 7–8 |
-| Preserve storage keys + shortcuts | 7–8, 11 |
+| Preserve storage keys + shortcuts | 7–8 |
 | Preserve postMessage preview protocol | 8–9 |
 | Drop vanilla + old routes | 6, 10 |
-| Vitest + Playwright | 2–5, 7–9, 11 |
+| Vitest | 2–5, 7–9 |
+| Playwright E2E | cancelled / out of scope (Task 11) |
 | README build step | 12 |
-| Behavior parity checklist | 11 (+ manual in 8–9) |
+| Behavior parity checklist | manual in 8–9 (+ Go integration where applicable) |
 
 **Clarification vs brainstorming prose:** the design said “do not introduce postMessage”; implementation **preserves the existing** `source: "mino"` protocol already used by `preview-session.js` / `viewer.js` / `preview-width.js`.
 
