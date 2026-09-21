@@ -152,7 +152,7 @@ describe("MarkdownViewer", () => {
     });
   });
 
-  it("renders GFM table and task list into #content", async () => {
+  it("renders GFM table, task list, and fenced code into #content", async () => {
     const source = [
       "| Feature | Status |",
       "| --- | --- |",
@@ -160,6 +160,10 @@ describe("MarkdownViewer", () => {
       "",
       "- [x] done",
       "- [ ] todo",
+      "",
+      "```js",
+      'const greeting = "hello";',
+      "```",
     ].join("\n");
     vi.stubGlobal(
       "fetch",
@@ -174,7 +178,15 @@ describe("MarkdownViewer", () => {
     await waitFor(() => {
       const content = view.container.querySelector("#content");
       expect(content?.querySelector("table")).toBeTruthy();
-      expect(content?.querySelectorAll('input[type="checkbox"]').length).toBeGreaterThan(0);
+      expect(content?.textContent).toContain("Feature");
+      expect(content?.textContent).toContain("Preview");
+      expect(content?.textContent).toContain("ok");
+      const boxes = content?.querySelectorAll('input[type="checkbox"]') ?? [];
+      expect(boxes.length).toBe(2);
+      expect((boxes[0] as HTMLInputElement).checked).toBe(true);
+      expect((boxes[1] as HTMLInputElement).checked).toBe(false);
+      const code = content?.querySelector("pre code.language-js");
+      expect(code?.textContent).toContain("greeting");
     });
   });
 
@@ -191,12 +203,11 @@ describe("MarkdownViewer", () => {
     );
     const view = render(<MarkdownViewer initialPath="docs/xss.md" />);
     await waitFor(() => {
-      expect(view.container.querySelector("#content")?.textContent).toMatch(/Safe/);
+      const content = view.container.querySelector("#content");
+      expect(content?.textContent).toMatch(/Safe/);
+      expect(content?.querySelector("script")).toBeNull();
+      expect(content?.innerHTML.toLowerCase()).not.toContain("<script");
     });
-    expect(view.container.querySelector("#content script")).toBeNull();
-    expect(view.container.querySelector("#content")?.innerHTML.toLowerCase()).not.toContain(
-      "<script",
-    );
   });
 
   it("rejects javascript: links and event-handler attributes", async () => {
@@ -218,18 +229,18 @@ describe("MarkdownViewer", () => {
     );
     const view = render(<MarkdownViewer initialPath="docs/xss-attrs.md" />);
     await waitFor(() => {
-      expect(view.container.querySelector("#content")?.textContent).toMatch(/Safe/);
+      const content = view.container.querySelector("#content");
+      expect(content?.textContent).toMatch(/Safe/);
+      const hrefs = Array.from(content?.querySelectorAll("a[href]") ?? []).map((a) =>
+        (a.getAttribute("href") || "").toLowerCase(),
+      );
+      expect(hrefs.every((h) => !h.startsWith("javascript:"))).toBe(true);
+      expect(content?.querySelector("[onerror]")).toBeNull();
+      expect(content?.innerHTML.toLowerCase()).not.toContain("onerror=");
     });
-    const content = view.container.querySelector("#content");
-    const hrefs = Array.from(content?.querySelectorAll("a[href]") ?? []).map((a) =>
-      (a.getAttribute("href") || "").toLowerCase(),
-    );
-    expect(hrefs.every((h) => !h.startsWith("javascript:"))).toBe(true);
-    expect(content?.querySelector("[onerror]")).toBeNull();
-    expect(content?.innerHTML.toLowerCase()).not.toContain("onerror=");
   });
 
-  it("assigns heading ids for TOC after successful paint", async () => {
+  it("assigns heading ids and wires TOC nav links after paint", async () => {
     const source = "# Alpha\n\n## Beta\n\n### Gamma\n";
     vi.stubGlobal(
       "fetch",
@@ -243,11 +254,24 @@ describe("MarkdownViewer", () => {
     const view = render(<MarkdownViewer initialPath="docs/toc.md" />);
     await waitFor(() => {
       const content = view.container.querySelector("#content");
-      const headings = content?.querySelectorAll("h1, h2, h3") ?? [];
+      const headings = Array.from(content?.querySelectorAll("h1, h2, h3") ?? []);
       expect(headings.length).toBe(3);
-      headings.forEach((h) => {
-        expect(h.getAttribute("id")).toBeTruthy();
-      });
+      const ids = headings.map((h) => h.getAttribute("id"));
+      expect(ids.every(Boolean)).toBe(true);
+
+      const nav = view.container.querySelector("#toc-nav");
+      expect(nav).toBeTruthy();
+      const links = Array.from(nav?.querySelectorAll("a.toc-link") ?? []);
+      expect(links.length).toBe(3);
+      expect(links.map((a) => a.getAttribute("href"))).toEqual(
+        ids.map((id) => "#" + id),
+      );
+      expect(links.map((a) => a.textContent?.trim())).toEqual([
+        "Alpha",
+        "Beta",
+        "Gamma",
+      ]);
+      expect(links.filter((a) => a.className.includes("active")).length).toBe(1);
     });
   });
 });

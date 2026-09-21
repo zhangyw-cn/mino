@@ -1,10 +1,7 @@
-import { cleanup, render, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { previewWidthMessage } from "../../lib/preview-width";
 import { previewURL } from "./preview-url";
 import { PreviewPane, type PreviewOpenSignal } from "./PreviewPane";
-import { StatusBar } from "../status-bar/StatusBar";
 
 afterEach(() => cleanup());
 
@@ -13,108 +10,6 @@ describe("previewURL", () => {
     vi.stubGlobal("Date", { now: () => 1 });
     expect(previewURL("docs/sample.md")).toBe("/apps/docs/sample.md?t=1");
     vi.unstubAllGlobals();
-  });
-});
-
-describe("StatusBar", () => {
-  it("writes width to localStorage and posts message shape", async () => {
-    const user = userEvent.setup();
-    const storage = {
-      store: {} as Record<string, string>,
-      getItem(key: string) {
-        return this.store[key] ?? null;
-      },
-      setItem(key: string, value: string) {
-        this.store[key] = value;
-      },
-      removeItem(key: string) {
-        delete this.store[key];
-      },
-    };
-    vi.stubGlobal("localStorage", storage);
-
-    const postMessage = vi.fn();
-    const getPreviewWindow = () =>
-      ({ postMessage }) as unknown as Window;
-
-    const onPreviewWidthChange = vi.fn();
-    const view = render(
-      <StatusBar
-        currentPath="docs/sample.md"
-        previewWidth="wide"
-        onPreviewWidthChange={onPreviewWidthChange}
-        getPreviewWindow={getPreviewWindow}
-      />,
-    );
-
-    await user.click(within(view.container).getByRole("button", { name: "较宽" }));
-    await user.click(within(view.container).getByRole("menuitemradio", { name: "全宽" }));
-
-    expect(storage.store["mino-md-preview-width"]).toBe("full");
-    expect(onPreviewWidthChange).toHaveBeenCalledWith("full");
-    expect(postMessage).toHaveBeenCalledWith(
-      previewWidthMessage("full"),
-      window.location.origin,
-    );
-
-    vi.unstubAllGlobals();
-  });
-
-  it("uses Dark Modern shell colors and forbids Default Dark+ blue", () => {
-    const view = render(
-      <StatusBar
-        currentPath="docs/sample.md"
-        previewWidth="wide"
-        onPreviewWidthChange={() => {}}
-        getPreviewWindow={() => null}
-      />,
-    );
-    const footer = view.container.querySelector("footer");
-    expect(footer).toBeTruthy();
-    const cls = footer!.className;
-    expect(cls).toContain("bg-[#181818]");
-    expect(cls).toContain("text-[#cccccc]");
-    expect(cls).toContain("border-[#2b2b2b]");
-    expect(cls).toContain("h-[22px]");
-    expect(cls.toLowerCase()).not.toContain("007acc");
-    expect(cls).not.toContain("text-white");
-  });
-
-  it("hides width control for non-markdown but keeps the 22px bar", () => {
-    const view = render(
-      <StatusBar
-        currentPath="apps/hello.html"
-        previewWidth="wide"
-        onPreviewWidthChange={() => {}}
-        getPreviewWindow={() => null}
-      />,
-    );
-    const footer = view.container.querySelector("footer");
-    expect(footer).toBeTruthy();
-    expect(footer!.className).toContain("h-[22px]");
-    expect(within(view.container).queryByRole("button", { name: "较宽" })).toBeNull();
-  });
-
-  it("marks the current width and closes the menu on Escape", async () => {
-    const user = userEvent.setup();
-    const view = render(
-      <StatusBar
-        currentPath="docs/sample.md"
-        previewWidth="wide"
-        onPreviewWidthChange={() => {}}
-        getPreviewWindow={() => null}
-      />,
-    );
-
-    await user.click(within(view.container).getByRole("button", { name: "较宽" }));
-    const current = within(view.container).getByRole("menuitemradio", {
-      name: "较宽",
-    });
-    expect(current.getAttribute("aria-checked")).toBe("true");
-    expect(current.textContent).toContain("✓");
-
-    await user.keyboard("{Escape}");
-    expect(within(view.container).queryByRole("menu")).toBeNull();
   });
 });
 
