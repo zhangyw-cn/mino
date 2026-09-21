@@ -151,4 +151,51 @@ describe("MarkdownViewer", () => {
       );
     });
   });
+
+  it("renders GFM table and task list into #content", async () => {
+    const source = [
+      "| Feature | Status |",
+      "| --- | --- |",
+      "| Preview | ok |",
+      "",
+      "- [x] done",
+      "- [ ] todo",
+    ].join("\n");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(source, {
+          status: 200,
+          headers: { "Content-Type": "text/plain" },
+        }),
+      ),
+    );
+    const view = render(<MarkdownViewer initialPath="docs/gfm.md" />);
+    await waitFor(() => {
+      const content = view.container.querySelector("#content");
+      expect(content?.querySelector("table")).toBeTruthy();
+      expect(content?.querySelectorAll('input[type="checkbox"]').length).toBeGreaterThan(0);
+    });
+  });
+
+  it("sanitizes script tags out of rendered markdown", async () => {
+    const source = '# Safe\n\n<script>alert("xss")</script>\n\npara';
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(source, {
+          status: 200,
+          headers: { "Content-Type": "text/plain" },
+        }),
+      ),
+    );
+    const view = render(<MarkdownViewer initialPath="docs/xss.md" />);
+    await waitFor(() => {
+      expect(view.container.querySelector("#content")?.textContent).toMatch(/Safe/);
+    });
+    expect(view.container.querySelector("#content script")).toBeNull();
+    expect(view.container.querySelector("#content")?.innerHTML.toLowerCase()).not.toContain(
+      "<script",
+    );
+  });
 });
