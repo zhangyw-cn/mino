@@ -198,4 +198,26 @@ describe("MarkdownViewer", () => {
       "<script",
     );
   });
+
+  it("assigns heading ids for TOC after successful paint", async () => {
+    const source = "# Alpha\n\n## Beta\n\n### Gamma\n";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(source, {
+          status: 200,
+          headers: { "Content-Type": "text/plain" },
+        }),
+      ),
+    );
+    const view = render(<MarkdownViewer initialPath="docs/toc.md" />);
+    await waitFor(() => {
+      const content = view.container.querySelector("#content");
+      const headings = content?.querySelectorAll("h1, h2, h3") ?? [];
+      expect(headings.length).toBe(3);
+      headings.forEach((h) => {
+        expect(h.getAttribute("id")).toBeTruthy();
+      });
+    });
+  });
 });
