@@ -59,6 +59,41 @@ describe("StatusBar", () => {
 
     vi.unstubAllGlobals();
   });
+
+  it("uses Dark Modern shell colors and forbids Default Dark+ blue", () => {
+    const view = render(
+      <StatusBar
+        currentPath="docs/sample.md"
+        previewWidth="wide"
+        onPreviewWidthChange={() => {}}
+        getPreviewWindow={() => null}
+      />,
+    );
+    const footer = view.container.querySelector("footer");
+    expect(footer).toBeTruthy();
+    const cls = footer!.className;
+    expect(cls).toContain("bg-[#181818]");
+    expect(cls).toContain("text-[#cccccc]");
+    expect(cls).toContain("border-[#2b2b2b]");
+    expect(cls).toContain("h-[22px]");
+    expect(cls.toLowerCase()).not.toContain("007acc");
+    expect(cls).not.toContain("text-white");
+  });
+
+  it("hides width control for non-markdown but keeps the 22px bar", () => {
+    const view = render(
+      <StatusBar
+        currentPath="apps/hello.html"
+        previewWidth="wide"
+        onPreviewWidthChange={() => {}}
+        getPreviewWindow={() => null}
+      />,
+    );
+    const footer = view.container.querySelector("footer");
+    expect(footer).toBeTruthy();
+    expect(footer!.className).toContain("h-[22px]");
+    expect(within(view.container).queryByRole("button", { name: "较宽" })).toBeNull();
+  });
 });
 
 describe("PreviewPane", () => {

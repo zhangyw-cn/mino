@@ -65,7 +65,7 @@ export function StatusBar({
   }, [showWidth]);
 
   return (
-    <footer className="flex h-[22px] shrink-0 items-center justify-end gap-2 border-t border-[#2b2b2b] bg-[#007acc] px-2 text-[12px] text-white">
+    <footer className="flex h-[22px] shrink-0 items-center justify-end gap-2 border-t border-[#2b2b2b] bg-[#181818] px-2 text-[12px] text-[#cccccc]">
       {showWidth ? (
         <div ref={wrapRef} className="relative">
           <button
