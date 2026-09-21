@@ -94,6 +94,28 @@ describe("StatusBar", () => {
     expect(footer!.className).toContain("h-[22px]");
     expect(within(view.container).queryByRole("button", { name: "较宽" })).toBeNull();
   });
+
+  it("marks the current width and closes the menu on Escape", async () => {
+    const user = userEvent.setup();
+    const view = render(
+      <StatusBar
+        currentPath="docs/sample.md"
+        previewWidth="wide"
+        onPreviewWidthChange={() => {}}
+        getPreviewWindow={() => null}
+      />,
+    );
+
+    await user.click(within(view.container).getByRole("button", { name: "较宽" }));
+    const current = within(view.container).getByRole("menuitemradio", {
+      name: "较宽",
+    });
+    expect(current.getAttribute("aria-checked")).toBe("true");
+    expect(current.textContent).toContain("✓");
+
+    await user.keyboard("{Escape}");
+    expect(within(view.container).queryByRole("menu")).toBeNull();
+  });
 });
 
 describe("PreviewPane", () => {

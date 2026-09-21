@@ -56,8 +56,17 @@ export function StatusBar({
       if (wrapRef.current?.contains(event.target as Node)) return;
       setMenuOpen(false);
     }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setMenuOpen(false);
+    }
     document.addEventListener("pointerdown", onPointerDown);
-    return () => document.removeEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
   }, [menuOpen]);
 
   useEffect(() => {
@@ -85,23 +94,37 @@ export function StatusBar({
               role="menu"
               className="absolute bottom-full right-0 mb-1 min-w-[88px] rounded border border-[#2b2b2b] bg-[#252526] py-1 text-[#cccccc] shadow-lg"
             >
-              {WIDTH_OPTIONS.map((mode) => (
-                <li key={mode} role="none">
-                  <button
-                    type="button"
-                    role="menuitemradio"
-                    aria-checked={mode === previewWidth}
-                    data-md-width={mode}
-                    className="block w-full px-3 py-1 text-left hover:bg-[#2a2d2e]"
-                    onClick={(event) => {
-                      event.preventDefault();
-                      setPreviewWidth(mode);
-                    }}
-                  >
-                    {WIDTH_LABELS[mode]}
-                  </button>
-                </li>
-              ))}
+              {WIDTH_OPTIONS.map((mode) => {
+                const checked = mode === previewWidth;
+                return (
+                  <li key={mode} role="none">
+                    <button
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={checked}
+                      data-md-width={mode}
+                      className={
+                        "block w-full py-1 text-left hover:bg-[#2a2d2e] " +
+                        (checked ? "pl-7 pr-3 relative" : "px-3")
+                      }
+                      onClick={(event) => {
+                        event.preventDefault();
+                        setPreviewWidth(mode);
+                      }}
+                    >
+                      {checked ? (
+                        <span
+                          aria-hidden="true"
+                          className="absolute left-2 top-1/2 -translate-y-1/2 text-[11px] text-[#cccccc]"
+                        >
+                          ✓
+                        </span>
+                      ) : null}
+                      {WIDTH_LABELS[mode]}
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           ) : null}
         </div>

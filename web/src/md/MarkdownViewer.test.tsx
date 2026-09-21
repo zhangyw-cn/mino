@@ -199,6 +199,36 @@ describe("MarkdownViewer", () => {
     );
   });
 
+  it("rejects javascript: links and event-handler attributes", async () => {
+    const source = [
+      "# Safe",
+      "",
+      "[click](javascript:alert(1))",
+      "",
+      '<img src="x" onerror="alert(1)">',
+    ].join("\n");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(source, {
+          status: 200,
+          headers: { "Content-Type": "text/plain" },
+        }),
+      ),
+    );
+    const view = render(<MarkdownViewer initialPath="docs/xss-attrs.md" />);
+    await waitFor(() => {
+      expect(view.container.querySelector("#content")?.textContent).toMatch(/Safe/);
+    });
+    const content = view.container.querySelector("#content");
+    const hrefs = Array.from(content?.querySelectorAll("a[href]") ?? []).map((a) =>
+      (a.getAttribute("href") || "").toLowerCase(),
+    );
+    expect(hrefs.every((h) => !h.startsWith("javascript:"))).toBe(true);
+    expect(content?.querySelector("[onerror]")).toBeNull();
+    expect(content?.innerHTML.toLowerCase()).not.toContain("onerror=");
+  });
+
   it("assigns heading ids for TOC after successful paint", async () => {
     const source = "# Alpha\n\n## Beta\n\n### Gamma\n";
     vi.stubGlobal(
