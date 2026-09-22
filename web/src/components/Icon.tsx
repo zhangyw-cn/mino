@@ -4,6 +4,7 @@ const ICON_PATHS: Record<string, string> = {
   folder: "M1.5 3h5l1.25 1.5H14.5v8.5H1.5z",
   "folder-open":
     "M1.5 3.5h4.75l1 1.25H14v1.5H2.25zm.25 3.75L3.25 14h10.25l1.75-6.75z",
+  chevron: "M6 4v8l6-4z",
   file: FILE_PATH,
   "file-html":
     FILE_PATH +

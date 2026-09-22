@@ -57,4 +57,62 @@ describe("ExplorerTree", () => {
     );
     expect(onToggleExpand).toHaveBeenCalledWith("docs", true);
   });
+
+  it("indents nested rows by 16px columns", () => {
+    const view = render(
+      <ExplorerTree
+        root={root}
+        expandedPaths={new Set(["", "docs"])}
+        selectedPath=""
+        onToggleExpand={() => {}}
+        onOpenPath={() => {}}
+      />,
+    );
+    const top = within(view.container).getByRole("button", { name: "docs" });
+    const nested = within(view.container).getByRole("button", { name: "sample.md" });
+    expect(top.style.paddingLeft).toBe("8px");
+    expect(nested.style.paddingLeft).toBe("24px");
+  });
+
+  it("does not use a unicode twistie", () => {
+    const view = render(
+      <ExplorerTree
+        root={root}
+        expandedPaths={new Set(["", "docs"])}
+        selectedPath=""
+        onToggleExpand={() => {}}
+        onOpenPath={() => {}}
+      />,
+    );
+    expect(view.container.textContent).not.toContain("▶");
+  });
+
+  it("does not render children when a folder is collapsed", () => {
+    const view = render(
+      <ExplorerTree
+        root={root}
+        expandedPaths={new Set([""])}
+        selectedPath=""
+        onToggleExpand={() => {}}
+        onOpenPath={() => {}}
+      />,
+    );
+    expect(within(view.container).queryByRole("button", { name: "sample.md" })).toBeNull();
+  });
+
+  it("highlights the selected file", () => {
+    const view = render(
+      <ExplorerTree
+        root={root}
+        expandedPaths={new Set(["", "docs"])}
+        selectedPath="docs/sample.md"
+        onToggleExpand={() => {}}
+        onOpenPath={() => {}}
+      />,
+    );
+    const selected = within(view.container).getByRole("button", { name: "sample.md" });
+    expect(selected.className).toContain("bg-[#04395e]");
+    const other = within(view.container).getByRole("button", { name: "hello.html" });
+    expect(other.className).not.toContain("bg-[#04395e]");
+  });
 });

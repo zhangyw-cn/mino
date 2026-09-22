@@ -10,6 +10,21 @@ type ExplorerTreeProps = {
   statusMessage?: string | null;
 };
 
+function IndentGuides({ depth }: { depth: number }) {
+  if (depth <= 0) return null;
+  return (
+    <span className="pointer-events-none absolute inset-y-0 left-0" aria-hidden>
+      {Array.from({ length: depth }, (_, i) => (
+        <span
+          key={i}
+          className="absolute inset-y-0 w-px bg-[#373737]"
+          style={{ left: 8 + i * 16 + 8 }}
+        />
+      ))}
+    </span>
+  );
+}
+
 function TreeRow({
   node,
   expandedPaths,
@@ -25,7 +40,7 @@ function TreeRow({
   onOpenPath: (path: string) => void;
   depth: number;
 }) {
-  const pad = 8 + depth * 12;
+  const pad = 8 + depth * 16;
 
   if (node.type === "file") {
     const selected = node.path === selectedPath;
@@ -34,12 +49,13 @@ function TreeRow({
         <button
           type="button"
           title={node.path}
-          className={`flex w-full items-center gap-1 py-0.5 pr-2 text-left text-[13px] leading-[22px] ${
+          className={`relative flex w-full items-center gap-1 py-0.5 pr-2 text-left text-[13px] leading-[22px] ${
             selected ? "bg-[#04395e] text-white" : "text-[#cccccc] hover:bg-[#2a2d2e]"
           }`}
           style={{ paddingLeft: pad }}
           onClick={() => onOpenPath(node.path)}
         >
+          <IndentGuides depth={depth} />
           <span className="inline-block w-4 shrink-0" aria-hidden />
           <Icon name={fileIconName(node.path)} size={16} />
           <span className="truncate">{node.name}</span>
@@ -57,17 +73,18 @@ function TreeRow({
         type="button"
         title={node.path || node.name}
         aria-expanded={expanded}
-        className="flex w-full items-center gap-1 py-0.5 pr-2 text-left text-[13px] leading-[22px] text-[#cccccc] hover:bg-[#2a2d2e]"
+        className="relative flex w-full items-center gap-1 py-0.5 pr-2 text-left text-[13px] leading-[22px] text-[#cccccc] hover:bg-[#2a2d2e]"
         style={{ paddingLeft: pad }}
         onClick={() => onToggleExpand(node.path, !expanded)}
       >
+        <IndentGuides depth={depth} />
         <span
-          className={`inline-block w-4 shrink-0 text-[10px] text-[#6e6e6e] transition-transform ${
+          className={`inline-flex w-4 shrink-0 items-center justify-center text-[#6e6e6e] transition-transform ${
             expanded ? "rotate-90" : ""
           }`}
           aria-hidden
         >
-          ▶
+          <Icon name="chevron" size={16} />
         </span>
         <Icon name={folderIcon} size={16} />
         <span className="truncate">{node.name}</span>
