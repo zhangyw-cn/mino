@@ -14,9 +14,11 @@ import {
 import { useWatchEvents } from "../features/watch/useWatchEvents";
 import {
   ancestorPaths,
+  collectDirPaths,
   fetchMeta,
   fetchTree,
   flattenFiles,
+  pruneExpandedPaths,
   type TreeNode,
 } from "../lib/api";
 import {
@@ -96,15 +98,18 @@ export function WorkbenchApp({ onOpenPath }: WorkbenchAppProps = {}) {
       setRecents((prev) => prev.filter((path) => index.includes(path)));
       setTreeStatus(null);
 
+      const dirPaths = collectDirPaths(root);
       const restored = openPathRestoreRef.current(sessionStore(), index);
+      setExpandedPaths((prev) => {
+        const next = pruneExpandedPaths(prev, dirPaths);
+        if (restored) {
+          for (const ancestor of ancestorPaths(restored)) next.add(ancestor);
+        }
+        return next;
+      });
       if (restored) {
         setRecents((prev) => rememberRecent(prev, restored));
         setSelectedPath(restored);
-        setExpandedPaths((prev) => {
-          const next = new Set(prev);
-          for (const ancestor of ancestorPaths(restored)) next.add(ancestor);
-          return next;
-        });
         writeOpenPath(sessionStore(), restored);
         bumpPreviewOpen(restored, false);
         onOpenPath?.(restored);
@@ -229,6 +234,14 @@ export function WorkbenchApp({ onOpenPath }: WorkbenchAppProps = {}) {
     });
   }, []);
 
+  const expandAll = useCallback(() => {
+    setExpandedPaths(new Set(["", ...collectDirPaths(treeRoot)]));
+  }, [treeRoot]);
+
+  const collapseAll = useCallback(() => {
+    setExpandedPaths(new Set([""]));
+  }, []);
+
   const toggleSidebar = useCallback(() => {
     setSidebarCollapsed((c) => !c);
   }, []);
@@ -245,6 +258,16 @@ export function WorkbenchApp({ onOpenPath }: WorkbenchAppProps = {}) {
   const gridCols = sidebarCollapsed
     ? "grid-cols-[48px_0px_1fr]"
     : "grid-cols-[48px_min(280px,32vw)_1fr]";
+
+  const dirPaths = collectDirPaths(treeRoot);
+  const expandAllDisabled =
+    Boolean(treeStatus) ||
+    dirPaths.length === 0 ||
+    dirPaths.every((path) => expandedPaths.has(path));
+  const collapseAllDisabled =
+    Boolean(treeStatus) ||
+    dirPaths.length === 0 ||
+    !dirPaths.some((path) => expandedPaths.has(path));
 
   return (
     <div className="flex min-h-screen min-w-[680px] flex-col bg-[#181818] text-[#cccccc]">
@@ -321,15 +344,38 @@ export function WorkbenchApp({ onOpenPath }: WorkbenchAppProps = {}) {
         >
           <div className="flex h-9 items-center justify-between px-3 text-[11px] font-semibold uppercase tracking-wide text-[#cccccc]">
             <span>Explorer</span>
-            <button
-              type="button"
-              className="grid h-6 w-6 place-items-center rounded text-[#cccccc] hover:bg-[#2a2d2e]"
-              aria-label="Collapse explorer"
-              title="Collapse explorer"
-              onClick={collapseSidebar}
-            >
-              <Icon name="collapse" size={16} />
-            </button>
+            <div className="flex items-center">
+              <button
+                type="button"
+                className="grid h-6 w-6 place-items-center rounded text-[#cccccc] hover:bg-[#2a2d2e] disabled:text-[#6e6e6e] disabled:hover:bg-transparent"
+                aria-label="Expand all"
+                title="Expand all"
+                disabled={expandAllDisabled}
+                onClick={expandAll}
+              >
+                <Icon name="expand-all" size={16} />
+              </button>
+              <button
+                type="button"
+                className="grid h-6 w-6 place-items-center rounded text-[#cccccc] hover:bg-[#2a2d2e] disabled:text-[#6e6e6e] disabled:hover:bg-transparent"
+                aria-label="Collapse all"
+                title="Collapse all"
+                disabled={collapseAllDisabled}
+                onClick={collapseAll}
+              >
+                <Icon name="collapse-all" size={16} />
+              </button>
+              <span className="mx-0.5 h-4 w-px bg-[#2b2b2b]" aria-hidden />
+              <button
+                type="button"
+                className="grid h-6 w-6 place-items-center rounded text-[#cccccc] hover:bg-[#2a2d2e]"
+                aria-label="Collapse explorer"
+                title="Collapse explorer"
+                onClick={collapseSidebar}
+              >
+                <Icon name="collapse" size={16} />
+              </button>
+            </div>
           </div>
           <nav className="overflow-y-auto pb-4" aria-label="File tree">
             <ExplorerTree
