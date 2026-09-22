@@ -17,6 +17,25 @@ export function flattenFiles(node: TreeNode | null | undefined, out: string[] = 
   return out;
 }
 
+export function collectDirPaths(node: TreeNode | null | undefined, out: string[] = []): string[] {
+  if (!node) return out;
+  if (node.type === "dir" && node.path) out.push(node.path);
+  for (const child of node.children || []) collectDirPaths(child, out);
+  return out;
+}
+
+export function pruneExpandedPaths(
+  expanded: Iterable<string>,
+  dirPaths: Iterable<string>,
+): Set<string> {
+  const allowed = new Set(dirPaths);
+  const next = new Set<string>([""]);
+  for (const path of expanded) {
+    if (path && allowed.has(path)) next.add(path);
+  }
+  return next;
+}
+
 export function ancestorPaths(path: string): string[] {
   const parts = path.split("/");
   const ancestors = [""];
