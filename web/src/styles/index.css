@@ -1,5 +1,122 @@
 @import "tailwindcss";
 
+:root {
+  --mino-focus: #0078d4;
+  --mino-hover-bg: #2a2d2e;
+  --mino-disabled-fg: #6e6e6e;
+}
+
+@layer components {
+  .mino-icon-button {
+    cursor: pointer;
+  }
+
+  .mino-icon-button:hover:not(:disabled):not([aria-disabled="true"]) {
+    background-color: var(--mino-hover-bg);
+  }
+
+  .mino-icon-button:active:not(:disabled):not([aria-disabled="true"]) {
+    background-color: var(--mino-hover-bg);
+  }
+
+  .mino-icon-button:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--mino-focus) 35%, transparent);
+  }
+
+  .mino-icon-button:disabled,
+  .mino-icon-button[aria-disabled="true"] {
+    cursor: not-allowed;
+    color: var(--mino-disabled-fg);
+  }
+
+  .mino-icon-button:disabled:hover,
+  .mino-icon-button[aria-disabled="true"]:hover {
+    background-color: transparent;
+  }
+
+  .mino-list-row {
+    cursor: pointer;
+  }
+
+  .mino-list-row:hover:not(:disabled):not([aria-disabled="true"]):not(.mino-selected) {
+    background-color: var(--mino-hover-bg);
+  }
+
+  .mino-list-row:active:not(:disabled):not([aria-disabled="true"]):not(.mino-selected) {
+    background-color: var(--mino-hover-bg);
+  }
+
+  .mino-list-row:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--mino-focus) 35%, transparent);
+  }
+
+  .mino-list-row:disabled,
+  .mino-list-row[aria-disabled="true"] {
+    cursor: not-allowed;
+    color: var(--mino-disabled-fg);
+  }
+
+  .mino-list-row:disabled:hover,
+  .mino-list-row[aria-disabled="true"]:hover {
+    background-color: transparent;
+  }
+
+  .mino-list-row.mino-selected,
+  .mino-list-row.mino-selected:hover {
+    background-color: #04395e;
+    color: #ffffff;
+  }
+
+  .mino-chrome-button {
+    cursor: pointer;
+  }
+
+  .mino-chrome-button:hover:not(:disabled):not([aria-disabled="true"]) {
+    border-color: var(--mino-focus);
+  }
+
+  .mino-chrome-button:active:not(:disabled):not([aria-disabled="true"]) {
+    border-color: var(--mino-focus);
+  }
+
+  .mino-chrome-button:focus-visible {
+    outline: none;
+    border-color: var(--mino-focus);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--mino-focus) 35%, transparent);
+  }
+
+  .mino-chrome-button:disabled,
+  .mino-chrome-button[aria-disabled="true"] {
+    cursor: not-allowed;
+    color: var(--mino-disabled-fg);
+  }
+
+  .mino-status-chip {
+    cursor: pointer;
+  }
+
+  .mino-status-chip:hover:not(:disabled):not([aria-disabled="true"]) {
+    background-color: rgba(255, 255, 255, 0.15);
+  }
+
+  .mino-status-chip:active:not(:disabled):not([aria-disabled="true"]) {
+    background-color: rgba(255, 255, 255, 0.15);
+  }
+
+  .mino-status-chip:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--mino-focus) 35%, transparent);
+  }
+
+  .mino-status-chip:disabled,
+  .mino-status-chip[aria-disabled="true"] {
+    cursor: not-allowed;
+    color: var(--mino-disabled-fg);
+  }
+}
+
 iframe.preview-pending {
   visibility: hidden;
   opacity: 0;

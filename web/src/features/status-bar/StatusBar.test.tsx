@@ -72,14 +72,16 @@ describe("StatusBar", () => {
     expect(cls).not.toContain("text-white");
 
     const trigger = within(view.container).getByRole("button", { name: "较宽" });
-    expect(trigger.className).toContain("hover:bg-white/15");
+    expect(trigger.className).toContain("mino-status-chip");
+    expect(trigger.className).not.toContain("hover:bg-white/15");
 
     await user.click(trigger);
     const menu = within(view.container).getByRole("menu");
     expect(menu.className).toContain("bg-[#252526]");
     expect(menu.className).toContain("text-[#cccccc]");
     const item = within(view.container).getByRole("menuitemradio", { name: "标宽" });
-    expect(item.className).toContain("hover:bg-[#2a2d2e]");
+    expect(item.className).toContain("mino-list-row");
+    expect(item.className).not.toContain("hover:bg-[#2a2d2e]");
   });
 
   it("hides width control for non-markdown but keeps the 22px bar", () => {

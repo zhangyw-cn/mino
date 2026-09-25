@@ -79,7 +79,7 @@ export function StatusBar({
         <div ref={wrapRef} className="relative">
           <button
             type="button"
-            className="rounded px-1.5 py-0.5 hover:bg-white/15"
+            className="mino-status-chip rounded px-1.5 py-0.5"
             aria-expanded={menuOpen}
             aria-haspopup="menu"
             onClick={(event) => {
@@ -104,7 +104,7 @@ export function StatusBar({
                       aria-checked={checked}
                       data-md-width={mode}
                       className={
-                        "block w-full py-1 text-left hover:bg-[#2a2d2e] " +
+                        "mino-list-row block w-full py-1 text-left " +
                         (checked ? "pl-7 pr-3 relative" : "px-3")
                       }
                       onClick={(event) => {
