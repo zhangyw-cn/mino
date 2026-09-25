@@ -49,8 +49,8 @@ function TreeRow({
         <button
           type="button"
           title={node.path}
-          className={`relative flex w-full items-center gap-1 py-0.5 pr-2 text-left text-[13px] leading-[22px] ${
-            selected ? "bg-[#04395e] text-white" : "text-[#cccccc] hover:bg-[#2a2d2e]"
+          className={`mino-list-row relative flex w-full items-center gap-1 py-0.5 pr-2 text-left text-[13px] leading-[22px] ${
+            selected ? "mino-selected" : "text-[#cccccc]"
           }`}
           style={{ paddingLeft: pad }}
           onClick={() => onOpenPath(node.path)}
@@ -73,7 +73,7 @@ function TreeRow({
         type="button"
         title={node.path || node.name}
         aria-expanded={expanded}
-        className="relative flex w-full items-center gap-1 py-0.5 pr-2 text-left text-[13px] leading-[22px] text-[#cccccc] hover:bg-[#2a2d2e]"
+        className="mino-list-row relative flex w-full items-center gap-1 py-0.5 pr-2 text-left text-[13px] leading-[22px] text-[#cccccc]"
         style={{ paddingLeft: pad }}
         onClick={() => onToggleExpand(node.path, !expanded)}
       >

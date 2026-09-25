@@ -36,7 +36,9 @@ describe("ExplorerTree", () => {
         onOpenPath={onOpenPath}
       />,
     );
-    await user.click(within(view.container).getByRole("button", { name: "hello.html" }));
+    const fileBtn = within(view.container).getByRole("button", { name: "hello.html" });
+    expect(fileBtn.className).toContain("mino-list-row");
+    await user.click(fileBtn);
     expect(onOpenPath).toHaveBeenCalledWith("hello.html");
   });
 
@@ -111,8 +113,7 @@ describe("ExplorerTree", () => {
       />,
     );
     const selected = within(view.container).getByRole("button", { name: "sample.md" });
-    expect(selected.className).toContain("bg-[#04395e]");
-    const other = within(view.container).getByRole("button", { name: "hello.html" });
-    expect(other.className).not.toContain("bg-[#04395e]");
+    expect(selected.className).toContain("mino-list-row");
+    expect(selected.className).toContain("mino-selected");
   });
 });

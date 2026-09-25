@@ -221,8 +221,8 @@ export function QuickOpen({
                     role="option"
                     aria-selected={isActive}
                     tabIndex={-1}
-                    className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-[13px] ${
-                      isActive ? "bg-[#04395e] text-white" : "text-[#cccccc] hover:bg-[#2a2d2e]"
+                    className={`mino-list-row flex w-full items-center gap-2 px-3 py-1.5 text-left text-[13px] ${
+                      isActive ? "mino-selected" : "text-[#cccccc]"
                     }`}
                     onMouseEnter={() => setActiveIndex(index)}
                     onMouseDown={(event) => event.preventDefault()}
