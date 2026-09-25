@@ -67,7 +67,9 @@ body {
   color: #ffffff;
 }
 
-.toc-link.active:hover {
+/* Beat .mino-list-row:hover specificity so active TOC keeps border/color only */
+.mino-list-row.toc-link.active:hover,
+.mino-list-row.toc-link.active:active {
   background-color: transparent;
 }
 
