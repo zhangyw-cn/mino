@@ -288,7 +288,7 @@ export function WorkbenchApp({ onOpenPath }: WorkbenchAppProps = {}) {
             title={workspaceName}
             aria-haspopup="dialog"
             aria-expanded={quickOpenOpen}
-            className="relative h-6 w-full cursor-pointer overflow-hidden rounded-[5px] border border-[#3c3c3c] bg-[#252526] px-6 text-center text-[13px] leading-[22px] text-[#cccccc] hover:border-[#0078d4] focus-visible:border-[#0078d4] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#0078d4]/35"
+            className="mino-chrome-button relative h-6 w-full overflow-hidden rounded-[5px] border border-[#3c3c3c] bg-[#252526] px-6 text-center text-[13px] leading-[22px] text-[#cccccc]"
             onClick={openQuickOpen}
           >
             <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2">
@@ -320,7 +320,7 @@ export function WorkbenchApp({ onOpenPath }: WorkbenchAppProps = {}) {
         <nav className="flex flex-col border-r border-[#2b2b2b] bg-[#181818]" aria-label="Activity">
           <button
             type="button"
-            className={`grid h-12 w-12 place-items-center border-l-2 ${
+            className={`mino-icon-button grid h-12 w-12 place-items-center border-l-2 ${
               sidebarCollapsed
                 ? "border-transparent text-[#6e6e6e] hover:text-[#cccccc]"
                 : "border-[#0078d4] bg-[#2a2d2e] text-white"
@@ -347,7 +347,7 @@ export function WorkbenchApp({ onOpenPath }: WorkbenchAppProps = {}) {
             <div className="flex items-center">
               <button
                 type="button"
-                className="grid h-6 w-6 place-items-center rounded text-[#cccccc] hover:bg-[#2a2d2e] disabled:text-[#6e6e6e] disabled:hover:bg-transparent"
+                className="mino-icon-button grid h-6 w-6 place-items-center rounded text-[#cccccc]"
                 aria-label="Expand all"
                 title="Expand all"
                 disabled={expandAllDisabled}
@@ -357,7 +357,7 @@ export function WorkbenchApp({ onOpenPath }: WorkbenchAppProps = {}) {
               </button>
               <button
                 type="button"
-                className="grid h-6 w-6 place-items-center rounded text-[#cccccc] hover:bg-[#2a2d2e] disabled:text-[#6e6e6e] disabled:hover:bg-transparent"
+                className="mino-icon-button grid h-6 w-6 place-items-center rounded text-[#cccccc]"
                 aria-label="Collapse all"
                 title="Collapse all"
                 disabled={collapseAllDisabled}
@@ -368,7 +368,7 @@ export function WorkbenchApp({ onOpenPath }: WorkbenchAppProps = {}) {
               <span className="mx-0.5 h-4 w-px bg-[#2b2b2b]" aria-hidden />
               <button
                 type="button"
-                className="grid h-6 w-6 place-items-center rounded text-[#cccccc] hover:bg-[#2a2d2e]"
+                className="mino-icon-button grid h-6 w-6 place-items-center rounded text-[#cccccc]"
                 aria-label="Collapse explorer"
                 title="Collapse explorer"
                 onClick={collapseSidebar}
