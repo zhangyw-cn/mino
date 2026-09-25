@@ -80,7 +80,7 @@ export function Toc({ items, contentVersion }: TocProps) {
         <button
           type="button"
           id="toc-toggle"
-          className="toc-toggle"
+          className="toc-toggle mino-icon-button"
           aria-expanded={collapsed ? "false" : "true"}
           aria-controls="toc-nav"
           onClick={onToggle}
@@ -93,7 +93,7 @@ export function Toc({ items, contentVersion }: TocProps) {
           <a
             key={item.id}
             href={"#" + item.id}
-            className={`toc-link toc-level-${item.level}${activeId === item.id ? " active" : ""}`}
+            className={`mino-list-row toc-link toc-level-${item.level}${activeId === item.id ? " active" : ""}`}
             onClick={(ev) => onLinkClick(item, ev)}
           >
             {item.text || item.id}

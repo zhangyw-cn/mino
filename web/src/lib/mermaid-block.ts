@@ -345,7 +345,7 @@ export function previewActionsVisible(mode: unknown, failed: boolean): boolean {
 
 export function previewActionsHtml() {
     return (
-      '<button type="button" data-action="fullscreen" aria-label="Fullscreen">Fullscreen</button>'
+      '<button type="button" class="mino-icon-button" data-action="fullscreen" aria-label="Fullscreen">Fullscreen</button>'
     );
   }
 
@@ -513,8 +513,8 @@ export function handleFullscreenChromeAction(action: string, api: { resetZoom():
     el.setAttribute("aria-label", "Mermaid fullscreen");
     el.innerHTML =
       '<div class="mermaid-fs-chrome">' +
-      '<button type="button" data-action="fs-reset" aria-label="Reset zoom">Reset</button>' +
-      '<button type="button" data-action="fs-close" aria-label="Close">Close</button>' +
+      '<button type="button" class="mino-icon-button" data-action="fs-reset" aria-label="Reset zoom">Reset</button>' +
+      '<button type="button" class="mino-icon-button" data-action="fs-close" aria-label="Close">Close</button>' +
       "</div>" +
       '<div class="mermaid-fs-stage"></div>';
     document.body.appendChild(el);
@@ -632,8 +632,8 @@ export function createMermaidBlock(sourceText: unknown, _escapeHtml?: unknown): 
     root.innerHTML =
       '<div class="mermaid-toolbar" role="toolbar" aria-label="Mermaid view">' +
       '<div class="mermaid-mode-group">' +
-      '<button type="button" data-mode="code">Code</button>' +
-      '<button type="button" data-mode="preview" aria-pressed="true">Preview</button>' +
+      '<button type="button" class="mino-icon-button" data-mode="code">Code</button>' +
+      '<button type="button" class="mino-icon-button" data-mode="preview" aria-pressed="true">Preview</button>' +
       "</div>" +
       '<div class="mermaid-preview-actions" hidden>' +
       previewActionsHtml() +
