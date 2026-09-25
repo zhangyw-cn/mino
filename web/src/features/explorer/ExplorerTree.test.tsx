@@ -115,5 +115,11 @@ describe("ExplorerTree", () => {
     const selected = within(view.container).getByRole("button", { name: "sample.md" });
     expect(selected.className).toContain("mino-list-row");
     expect(selected.className).toContain("mino-selected");
+    const other = within(view.container).getByRole("button", { name: "hello.html" });
+    expect(other.className).toContain("mino-list-row");
+    expect(other.className).not.toContain("mino-selected");
+    const folder = within(view.container).getByRole("button", { name: "docs" });
+    expect(folder.className).toContain("mino-list-row");
+    expect(folder.className).not.toContain("mino-selected");
   });
 });

@@ -10,63 +10,7 @@ body {
   line-height: 1.65;
 }
 
-:root {
-  --mino-focus: #0078d4;
-  --mino-hover-bg: #2a2d2e;
-  --mino-disabled-fg: #6e6e6e;
-}
-
-.mino-icon-button {
-  cursor: pointer;
-}
-
-.mino-icon-button:hover:not(:disabled):not([aria-disabled="true"]) {
-  background-color: var(--mino-hover-bg);
-}
-
-.mino-icon-button:active:not(:disabled):not([aria-disabled="true"]) {
-  background-color: var(--mino-hover-bg);
-}
-
-.mino-icon-button:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--mino-focus) 35%, transparent);
-}
-
-.mino-icon-button:disabled,
-.mino-icon-button[aria-disabled="true"] {
-  cursor: not-allowed;
-  color: var(--mino-disabled-fg);
-}
-
-.mino-icon-button:disabled:hover,
-.mino-icon-button[aria-disabled="true"]:hover {
-  background-color: transparent;
-}
-
-.mino-list-row {
-  cursor: pointer;
-}
-
-.mino-list-row:hover:not(:disabled):not([aria-disabled="true"]):not(.mino-selected) {
-  background-color: var(--mino-hover-bg);
-}
-
-.mino-list-row:active:not(:disabled):not([aria-disabled="true"]):not(.mino-selected) {
-  background-color: var(--mino-hover-bg);
-}
-
-.mino-list-row:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--mino-focus) 35%, transparent);
-}
-
-.mino-list-row.mino-selected,
-.mino-list-row.mino-selected:hover {
-  background-color: #04395e;
-  color: #ffffff;
-}
-
+/* Interactive variants live in styles/index.css (imported by viewer-main). */
 /* Beat .mino-list-row:hover specificity so active TOC keeps border/color only */
 .mino-list-row.toc-link.active:hover,
 .mino-list-row.toc-link.active:active {

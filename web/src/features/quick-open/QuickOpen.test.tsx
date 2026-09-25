@@ -90,6 +90,30 @@ describe("QuickOpen", () => {
     expect(onOpen).toHaveBeenCalledWith("docs/sample.md");
   });
 
+  it("uses list-row variants for options and selection", async () => {
+    const user = userEvent.setup();
+    const view = render(
+      <QuickOpen
+        open
+        fileIndex={fileIndex}
+        recents={["hello.html", "docs/sample.md"]}
+        onClose={() => {}}
+        onOpen={() => {}}
+      />,
+    );
+    const ui = within(view.container);
+    const first = ui.getByRole("option", { name: /hello\.html/i });
+    const second = ui.getByRole("option", { name: /sample\.md/i });
+    expect(first.className).toContain("mino-list-row");
+    expect(second.className).toContain("mino-list-row");
+    expect(first.className).toContain("mino-selected");
+    expect(second.className).not.toContain("mino-selected");
+
+    await user.keyboard("{ArrowDown}");
+    expect(first.className).not.toContain("mino-selected");
+    expect(second.className).toContain("mino-selected");
+  });
+
   it("focusToken re-focuses the input while already open", () => {
     const view = render(
       <QuickOpen
